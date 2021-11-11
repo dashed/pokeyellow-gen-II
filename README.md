@@ -4,11 +4,19 @@ This is a disassembly of Pokémon Yellow.
 
 It builds the following ROMs:
 
-- Pokemon Yellow (UE) [C][!].gbc  `sha1: cc7d03262ebfaf2f06772c1a480c7d9d5f4a38e1`
+- Pokemon Yellow (UE) [C][!].gbc `sha1: cc7d03262ebfaf2f06772c1a480c7d9d5f4a38e1`
 - YELLMONS.GB (debug build) `sha1: d44e96eddfbdad633cbe4e6e64915e9e198974b0`
 
 To set up the repository, see [**INSTALL.md**](INSTALL.md).
 
+## Dashed's patch
+
+- Forked from https://github.com/dannye/pokeyellow-gen-II with gen 2 graphics.
+
+Quality of life improvements:
+
+- Remove artificial save delay
+- Fix 1/256 miss glitch - https://bulbapedia.bulbagarden.net/wiki/List_of_glitches_(Generation_I)#1.2F256_miss_glitch
 
 ## See also
 

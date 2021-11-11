@@ -18,6 +18,11 @@ Quality of life improvements:
 - Remove artificial save delay
 - Fix 1/256 miss glitch - https://bulbapedia.bulbagarden.net/wiki/List_of_glitches_(Generation_I)#1.2F256_miss_glitch
 
+## References for Assembly
+
+- https://rgbds.gbdev.io/docs/v0.5.1/gbz80.7
+- http://z80-heaven.wikidot.com/
+
 ## See also
 
 - **Discord:** [pret][discord]

@@ -5613,9 +5613,22 @@ MoveHitTest:
 .doAccuracyCheck
 ; if the random number generated is greater than or equal to the scaled accuracy, the move misses
 ; note that this means that even the highest accuracy is still just a 255/256 chance, not 100%
+
+	; https://bulbapedia.bulbagarden.net/wiki/List_of_glitches_(Generation_I)#1.2F256_miss_glitch
+	; https://github.com/pret/pokered/wiki/Fix-the-1-in-255-miss-bug
+	; register b holds the move accuracy of the Pokémon currently using the move
+	; loads the contents of register b into register a
+	ld a, b
+	cp $FF ; Is the value $FF (255)? If so, then Z flag is set.
+	jr z, .move_hit ; If Z flag is set, then jump to .move_hit
+
 	call BattleRandom
 	cp b
+	; https://github.com/jojobear13/shinpokered/blob/9d99e76da416d96fffa0c4b0bd583867371ad4b2/engine/battle/core.asm#L6124
+	jr z, .move_hit ;joenote - fixed move accuracy so a move hits if acc = randnum
 	jr nc, .moveMissed
+	ret
+.move_hit
 	ret
 .moveMissed
 	xor a

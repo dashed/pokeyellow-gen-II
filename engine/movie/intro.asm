@@ -124,6 +124,18 @@ PlayShootingStar:
 	push af
 	pop af
 	jr c, .next ; skip the delay if the user interrupted the animation
+
+	; https://github.com/pret/pokered/wiki/Restore-the-%22PRESENTS%22-subtitle-under-the-Game-Freak-logo-in-the-intro-animation.
+	;  restore the "PRESENTS" under the Game Freak logo in the intro
+	hlcoord 7, 11
+	ld a, $67 ; load $67 into reg a - starting tile ID
+	ld c, $06 ; number of tiles
+	.loop
+		ld [hli], a
+		inc a
+		dec c
+		jr nz, .loop
+
 	ld c, 40
 	call DelayFrames
 .next

@@ -17,6 +17,7 @@ Quality of life improvements:
 
 - Remove artificial save delay
 - Fix 1/256 miss glitch - https://bulbapedia.bulbagarden.net/wiki/List_of_glitches_(Generation_I)#1.2F256_miss_glitch
+- Add warp text speed mode.
 
 ## References for Assembly
 

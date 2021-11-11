@@ -5,17 +5,25 @@ PrintLetterDelay::
 	ld a, [wd730]
 	bit 6, a
 	ret nz
+
+	; non-scrolling text?	
 	ld a, [wLetterPrintingDelayFlags]
 	bit 1, a
 	ret z
+	
 	push hl
 	push de
 	push bc
+
+	; force fast scroll?
 	ld a, [wLetterPrintingDelayFlags]
 	bit 0, a
 	jr z, .waitOneFrame
+
+	; text speed
 	ld a, [wOptions]
-	and $f
+	and TEXT_DELAY_MASK ; 1111 mask
+	jr z, .done ; exit early if the text speed is warp mode.
 	ldh [hFrameCounter], a
 	jr .checkButtons
 .waitOneFrame

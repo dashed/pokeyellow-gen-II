@@ -271,7 +271,15 @@ _ContText::
 	pop de
 	ld a, " "
 	ldcoord_a 18, 16
+	jr _ContTextNoPause.not_warp
 _ContTextNoPause::
+	ld a, [wOptions]
+	and TEXT_DELAY_MASK ; 1111 mask
+	cp TEXT_DELAY_FAST
+	jr nz, .not_warp
+	ld c, 15
+	call DelayFrames
+.not_warp
 	push de
 	call ScrollTextUpOneLine
 	call ScrollTextUpOneLine

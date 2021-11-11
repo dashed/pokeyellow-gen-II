@@ -40,6 +40,12 @@ OptionMenuJumpTable:
 	dw OptionsMenu_Dummy
 	dw OptionsMenu_Cancel
 
+ 	const_def
+	const OPT_TEXT_SPEED_FAST ; 0
+	const OPT_TEXT_SPEED_MED  ; 1
+	const OPT_TEXT_SPEED_SLOW ; 2
+	const OPT_TEXT_SPEED_WARP ; 3
+
 OptionsMenu_TextSpeed:
 	call GetTextSpeed
 	ldh a, [hJoy5]
@@ -47,31 +53,33 @@ OptionsMenu_TextSpeed:
 	jr nz, .pressedRight
 	bit 5, a
 	jr nz, .pressedLeft
-	jr .asm_41ce0
+	jr .NonePressed
 .pressedRight
 	ld a, c
-	cp $2
-	jr c, .asm_41cca
-	ld c, $ff
-.asm_41cca
+	; cp $2
+	cp OPT_TEXT_SPEED_WARP ; If A < OPT_TEXT_SPEED_WARP, then C flag is set.
+	jr c, .Increase
+	ld c, OPT_TEXT_SPEED_FAST - 1
+.Increase
 	inc c
 	ld a, e
-	jr .asm_41cd6
+	jr .Save
 .pressedLeft
 	ld a, c
 	and a
-	jr nz, .asm_41cd4
-	ld c, $3
-.asm_41cd4
+	jr nz, .Decrease
+	; ld c, $3 ; ld c, OPT_TEXT_SPEED_SLOW + 1
+	ld c, OPT_TEXT_SPEED_WARP + 1
+.Decrease
 	dec c
 	ld a, d
-.asm_41cd6
+.Save
 	ld b, a
 	ld a, [wOptions]
 	and $f0
 	or b
 	ld [wOptions], a
-.asm_41ce0
+.NonePressed
 	ld b, $0
 	ld hl, TextSpeedStringsPointerTable
 	add hl, bc
@@ -88,6 +96,7 @@ TextSpeedStringsPointerTable:
 	dw FastText
 	dw MidText
 	dw SlowText
+	dw WarpText
 
 FastText:
 	db "FAST@"
@@ -95,25 +104,33 @@ MidText:
 	db "MID @"
 SlowText:
 	db "SLOW@"
+WarpText:
+	db "WARP@"
 
 GetTextSpeed:
 	ld a, [wOptions]
-	and $f
-	cp $5
+	and TEXT_DELAY_MASK
+	cp TEXT_DELAY_SLOW 
 	jr z, .slowTextOption
-	cp $1
+	cp TEXT_DELAY_FAST
 	jr z, .fastTextOption
+	cp TEXT_DELAY_WARP
+	jr z, .warpTextOption
 ; mid text option
-	ld c, $1
-	lb de, 1, 5
+	ld c, OPT_TEXT_SPEED_MED
+	lb de, TEXT_DELAY_FAST, TEXT_DELAY_SLOW
 	ret
 .slowTextOption
-	ld c, $2
-	lb de, 3, 1
+	ld c, OPT_TEXT_SPEED_SLOW
+	lb de, TEXT_DELAY_MEDIUM, TEXT_DELAY_WARP
 	ret
 .fastTextOption
-	ld c, $0
-	lb de, 5, 3
+	ld c, OPT_TEXT_SPEED_FAST
+	lb de, TEXT_DELAY_WARP, TEXT_DELAY_MEDIUM
+	ret
+.warpTextOption
+	ld c, OPT_TEXT_SPEED_WARP ; ld c, $3
+	lb de, TEXT_DELAY_SLOW, TEXT_DELAY_FAST
 	ret
 
 OptionsMenu_BattleAnimations:

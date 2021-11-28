@@ -19,6 +19,11 @@ Quality of life improvements:
 - Fix 1/256 miss glitch - https://bulbapedia.bulbagarden.net/wiki/List_of_glitches_(Generation_I)#1.2F256_miss_glitch
 - Add warp text speed mode.
 
+Misc additions:
+
+- Add the "PRESENTS" copy under the Game Freak logo in the intro animation.
+    - Ref: https://github.com/pret/pokered/wiki/Restore-the-%22PRESENTS%22-subtitle-under-the-Game-Freak-logo-in-the-intro-animation.
+
 ## References for Assembly
 
 - https://rgbds.gbdev.io/docs/v0.5.1/gbz80.7

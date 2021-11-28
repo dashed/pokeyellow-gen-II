@@ -22,7 +22,7 @@ Quality of life improvements:
 Misc additions:
 
 - Add the "PRESENTS" copy under the Game Freak logo in the intro animation.
-    - Ref: https://github.com/pret/pokered/wiki/Restore-the-%22PRESENTS%22-subtitle-under-the-Game-Freak-logo-in-the-intro-animation.
+    - Ref: https://github.com/pret/pokered/wiki/Restore-the-PRESENTS-subtitle-under-the-Game-Freak-logo-in-the-intro-animation.
 
 ## References for Assembly
 

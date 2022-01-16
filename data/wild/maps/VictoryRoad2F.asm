@@ -7,7 +7,7 @@ PlateauMons2:
 	db 39, GOLBAT
 	db 44, GRAVELER
 	db 45, ONIX
-	db 47, ONIX
+	db 47, HITMONCHAN
 	db 39, MACHOKE
 	db 42, MACHOKE
 	end_grass_wildmons

@@ -27,6 +27,7 @@ Addition of missing Pokemon:
 2. Kakuna - Route 2, Viridian Forest
 3. Ekans - Routes 4
 4. Raichu - Power Plant
+5. Meowth - Route 5
 
 Misc additions:
 

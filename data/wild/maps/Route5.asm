@@ -8,8 +8,8 @@ Route5Mons:
 	db 17, PIDGEY
 	db 17, PIDGEOTTO
 	db  3, JIGGLYPUFF
-	db  5, JIGGLYPUFF
-	db  7, JIGGLYPUFF
+	db  5, MEOWTH
+	db  7, MEOWTH
 	end_grass_wildmons
 
 	def_water_wildmons 0 ; encounter rate

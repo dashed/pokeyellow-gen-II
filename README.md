@@ -28,6 +28,7 @@ Addition of missing Pokemon:
 3. Ekans - Routes 4
 4. Raichu - Power Plant
 5. Meowth - Route 5
+6. Koffing - Pokemon Mansion Floor 1 and 2
 
 Misc additions:
 

@@ -8,8 +8,8 @@ MansionMons1:
 	db 37, RATICATE
 	db 30, GROWLITHE
 	db 26, GRIMER
-	db 34, GROWLITHE
-	db 38, GROWLITHE
+	db 34, KOFFING
+	db 38, KOFFING
 	end_grass_wildmons
 
 	def_water_wildmons 0 ; encounter rate

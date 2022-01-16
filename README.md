@@ -19,10 +19,16 @@ Quality of life improvements:
 - Fix 1/256 miss glitch - https://bulbapedia.bulbagarden.net/wiki/List_of_glitches_(Generation_I)#1.2F256_miss_glitch
 - Add warp text speed mode.
 
+Addition of missing Pokemon:
+
+- https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9mon_Yellow_Version#Missing_Pok.C3.A9mon
+
+1. Weedle - Route 2, Viridian Forest
+
 Misc additions:
 
 - Add the "PRESENTS" copy under the Game Freak logo in the intro animation.
-    - Ref: https://github.com/pret/pokered/wiki/Restore-the-PRESENTS-subtitle-under-the-Game-Freak-logo-in-the-intro-animation.
+  - Ref: https://github.com/pret/pokered/wiki/Restore-the-PRESENTS-subtitle-under-the-Game-Freak-logo-in-the-intro-animation.
 
 ## References for Assembly
 

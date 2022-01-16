@@ -41,6 +41,7 @@ Reference https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9mon_Yellow_Version#Mi
 - Hitmonchan - Victory Road (floor with Moltres)
 - Omanyte - Bottom floor of Seafoam Islands (water)
 - Kabuto - Bottom floor of Seafoam Islands (water)
+- Mew - Wild in the last floor of Unknown Dungeon
 
 #### Misc additions
 

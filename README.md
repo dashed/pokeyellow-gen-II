@@ -43,6 +43,10 @@ Reference https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9mon_Yellow_Version#Mi
 - Kabuto - Bottom floor of Seafoam Islands (water)
 - Mew - Wild in the last floor of Unknown Dungeon
 
+#### Fix Impossible Evolutions
+
+- Kadabra evolves into Alakazam at Level 36
+
 #### Misc additions
 
 - Add the "PRESENTS" copy under the Game Freak logo in the intro animation.

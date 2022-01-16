@@ -621,7 +621,7 @@ SlowpokeEvosMoves:
 
 KadabraEvosMoves:
 ; Evolutions
-	db EV_TRADE, 1, ALAKAZAM
+	db EV_LEVEL, 36, ALAKAZAM
 	db 0
 ; Learnset
 	db 16, CONFUSION

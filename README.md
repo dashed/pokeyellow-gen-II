@@ -31,6 +31,7 @@ Addition of missing Pokemon:
 6. Koffing - Pokemon Mansion Floor 1 and 2
 7. Weezing - Pokemon Mansion Floor 2
 8. Jynx - Bottom Level of Seafoam Islands (walking)
+9. Electabuzz - Power Plant
 
 Misc additions:
 

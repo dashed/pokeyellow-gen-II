@@ -660,7 +660,7 @@ ChanseyEvosMoves:
 
 MachokeEvosMoves:
 ; Evolutions
-	db EV_TRADE, 1, MACHAMP
+	db EV_LEVEL, 36, MACHAMP
 	db 0
 ; Learnset
 	db 20, LOW_KICK

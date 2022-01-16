@@ -40,6 +40,7 @@ Reference https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9mon_Yellow_Version#Mi
 - Hitmonlee - Victory Road (floor with Moltres)
 - Hitmonchan - Victory Road (floor with Moltres)
 - Omanyte - Bottom floor of Seafoam Islands (water)
+- Kabuto - Bottom floor of Seafoam Islands (water)
 
 #### Misc additions
 

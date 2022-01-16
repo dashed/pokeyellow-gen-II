@@ -20,7 +20,7 @@ IslandMonsB4:
 	db 35, TENTACOOL
 	db 30, STARYU
 	db 40, OMANYTE
-	db 30, STARYU
+	db 30, KABUTO
 	db 30, STARYU
 	db 30, STARYU
 	end_water_wildmons

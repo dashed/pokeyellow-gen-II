@@ -39,6 +39,7 @@ Reference https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9mon_Yellow_Version#Mi
 - Eevee - Route 16. There was only one Eevee in the game at the Pokémon Mansion in Celadon City.
 - Hitmonlee - Victory Road (floor with Moltres)
 - Hitmonchan - Victory Road (floor with Moltres)
+- Omanyte - Bottom floor of Seafoam Islands (water)
 
 #### Misc additions
 

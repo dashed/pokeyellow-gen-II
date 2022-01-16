@@ -5,11 +5,11 @@ Route2Mons:
 	db  4, WEEDLE
 	db  4, NIDORAN_M
 	db  4, NIDORAN_F
-	db  5, PIDGEY
+	db  5, KAKUNA
 	db  6, NIDORAN_M
 	db  6, NIDORAN_F
 	db  7, PIDGEY
-	db  7, PIDGEY
+	db  7, KAKUNA
 	end_grass_wildmons
 
 	def_water_wildmons 0 ; encounter rate

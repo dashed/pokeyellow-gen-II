@@ -24,6 +24,7 @@ Addition of missing Pokemon:
 - https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9mon_Yellow_Version#Missing_Pok.C3.A9mon
 
 1. Weedle - Route 2, Viridian Forest
+2. Kakuna - Route 2, Viridian Forest
 
 Misc additions:
 

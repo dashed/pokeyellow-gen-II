@@ -26,6 +26,7 @@ Addition of missing Pokemon:
 1. Weedle - Route 2, Viridian Forest
 2. Kakuna - Route 2, Viridian Forest
 3. Ekans - Routes 4
+4. Raichu - Power Plant
 
 Misc additions:
 

@@ -13,7 +13,7 @@ To set up the repository, see [**INSTALL.md**](INSTALL.md).
 
 - Forked from https://github.com/dannye/pokeyellow-gen-II with gen 2 graphics.
 
-#### Quality of life improvements\*
+#### Quality of life improvements
 
 - Remove artificial save delay
 - Fix 1/256 miss glitch - https://bulbapedia.bulbagarden.net/wiki/List_of_glitches_(Generation_I)#1.2F256_miss_glitch

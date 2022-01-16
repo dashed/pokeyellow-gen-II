@@ -3,7 +3,7 @@ MansionMons2:
 	db 37, RATTATA
 	db 37, RATICATE
 	db 26, GRIMER
-	db 29, GRIMER
+	db 29, WEEZING
 	db 40, RATTATA
 	db 40, RATICATE
 	db 32, KOFFING

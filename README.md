@@ -46,6 +46,7 @@ Reference https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9mon_Yellow_Version#Mi
 #### Fix Impossible Evolutions
 
 - Kadabra evolves into Alakazam at Level 36
+- Graveler evolves into Golem at Level 36
 
 #### Misc additions
 

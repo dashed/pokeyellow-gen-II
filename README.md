@@ -32,6 +32,7 @@ Addition of missing Pokemon:
 7. Weezing - Pokemon Mansion Floor 2
 8. Jynx - Bottom Level of Seafoam Islands (walking)
 9. Electabuzz - Power Plant
+10. Magmar - Pokemon Mansion Floor 3 and Basment Floor One
 
 Misc additions:
 

@@ -8,8 +8,8 @@ MansionMonsB1:
 	db 43, RATICATE
 	db 24, DITTO
 	db 46, RATICATE
-	db 18, DITTO
-	db 12, DITTO
+	db 18, MAGMAR
+	db 12, MAGMAR
 	end_grass_wildmons
 
 	def_water_wildmons 0 ; encounter rate

@@ -7,7 +7,7 @@ MansionMons3:
 	db 43, RATTATA
 	db 43, RATICATE
 	db 38, GRIMER
-	db 38, GRIMER
+	db 38, MAGMAR
 	db 38, MUK
 	db 41, MUK
 	end_grass_wildmons

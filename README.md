@@ -31,6 +31,14 @@ Misc additions:
 - Add the "PRESENTS" copy under the Game Freak logo in the intro animation.
   - Ref: https://github.com/pret/pokered/wiki/Restore-the-PRESENTS-subtitle-under-the-Game-Freak-logo-in-the-intro-animation.
 
+## Build notes
+
+```
+make all
+make yellow
+make yellow_debug
+```
+
 ## References for Assembly
 
 - https://rgbds.gbdev.io/docs/v0.5.1/gbz80.7

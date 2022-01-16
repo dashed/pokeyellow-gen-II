@@ -13,15 +13,15 @@ To set up the repository, see [**INSTALL.md**](INSTALL.md).
 
 - Forked from https://github.com/dannye/pokeyellow-gen-II with gen 2 graphics.
 
-Quality of life improvements:
+#### Quality of life improvements\*
 
 - Remove artificial save delay
 - Fix 1/256 miss glitch - https://bulbapedia.bulbagarden.net/wiki/List_of_glitches_(Generation_I)#1.2F256_miss_glitch
 - Add warp text speed mode.
 
-Addition of missing Pokemon:
+#### Addition of missing Pokemon
 
-- https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9mon_Yellow_Version#Missing_Pok.C3.A9mon
+Reference https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9mon_Yellow_Version#Missing_Pok.C3.A9mon
 
 1. Weedle - Route 2, Viridian Forest
 2. Kakuna - Route 2, Viridian Forest
@@ -34,7 +34,11 @@ Addition of missing Pokemon:
 9. Electabuzz - Power Plant
 10. Magmar - Pokemon Mansion Floor 3 and Basment Floor One
 
-Misc additions:
+#### Addition of Pokemon
+
+- Eevee - Route 16. There was only one Eevee in the game at the Pokémon Mansion in Celadon City.
+
+#### Misc additions
 
 - Add the "PRESENTS" copy under the Game Freak logo in the intro animation.
   - Ref: https://github.com/pret/pokered/wiki/Restore-the-PRESENTS-subtitle-under-the-Game-Freak-logo-in-the-intro-animation.

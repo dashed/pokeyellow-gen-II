@@ -30,6 +30,7 @@ Addition of missing Pokemon:
 5. Meowth - Route 5
 6. Koffing - Pokemon Mansion Floor 1 and 2
 7. Weezing - Pokemon Mansion Floor 2
+8. Jynx - Bottom Level of Seafoam Islands (walking)
 
 Misc additions:
 

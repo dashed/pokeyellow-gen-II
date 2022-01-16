@@ -7,7 +7,7 @@ IslandMonsB4:
 	db 28, SEEL
 	db 32, SEEL
 	db 27, GOLBAT
-	db 45, ZUBAT
+	db 45, JYNX
 	db 30, DEWGONG
 	db 34, DEWGONG
 	end_grass_wildmons

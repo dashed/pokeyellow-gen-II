@@ -19,7 +19,7 @@ SeafoamIslandsB4FWildMons:
 	db 30, STARYU
 	db 35, TENTACOOL
 	db 30, STARYU
-	db 40, TENTACOOL
+	db 40, OMANYTE
 	db 30, STARYU
 	db 30, STARYU
 	db 30, STARYU

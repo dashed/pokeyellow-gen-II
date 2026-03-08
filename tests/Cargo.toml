@@ -6,3 +6,9 @@ edition = "2021"
 [dependencies]
 boytacean = { git = "https://github.com/joamag/boytacean", rev = "86380e2726033a281702d6699313bf2a0891f234", features = ["gen-mock"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
+
+# Optimize all dependencies in dev/test builds — the emulator is the
+# bottleneck and debug-mode emulation is ~4x slower than optimized.
+# Only deps are optimized (not our test code), so compile times stay fast.
+[profile.dev.package."*"]
+opt-level = 2

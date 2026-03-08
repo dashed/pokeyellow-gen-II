@@ -30,6 +30,7 @@ const MAX_INTRO_FRAMES: u32 = 2000;
 fn presents_subtitle_golden_image() {
     // PPU must be enabled for framebuffer rendering.
     let mut h = TestHarness::new();
+    h.gb.set_apu_enabled(false); // no audio needed for screenshot tests
 
     // Run the game from boot through the intro sequence.
     // Poll the tilemap for the PRESENTS tile ($67) appearing at hlcoord 7,11.

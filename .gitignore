@@ -32,3 +32,6 @@
 *.sn*
 *.sa*
 *.sg1
+
+# Rust test harness build artifacts
+tests/target/

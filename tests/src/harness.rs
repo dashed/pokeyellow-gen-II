@@ -1,4 +1,5 @@
 use boytacean::gb::{GameBoy, GameBoyMode};
+use boytacean::pad::PadKey;
 use boytacean::state::{SaveStateFormat, StateManager};
 
 use crate::{rom_path, sym_path, SymbolTable};
@@ -15,6 +16,20 @@ const MAX_STEPS: u32 = 10_000_000;
 pub struct TestHarness {
     pub gb: GameBoy,
     pub sym: SymbolTable,
+    total_cycles: u64,
+}
+
+pub fn pad_key_to_u8(key: &PadKey) -> u8 {
+    match key {
+        PadKey::Up => 1,
+        PadKey::Down => 2,
+        PadKey::Left => 3,
+        PadKey::Right => 4,
+        PadKey::Start => 5,
+        PadKey::Select => 6,
+        PadKey::A => 7,
+        PadKey::B => 8,
+    }
 }
 
 impl Default for TestHarness {
@@ -40,7 +55,11 @@ impl TestHarness {
         gb.load_rom(&rom_data, None).unwrap();
         gb.load_boot_state();
 
-        Self { gb, sym }
+        Self {
+            gb,
+            sym,
+            total_cycles: 0,
+        }
     }
 
     /// Create a headless harness with PPU and APU disabled for faster execution.
@@ -126,11 +145,13 @@ impl TestHarness {
 
     /// Advance the emulator by `n` frames.
     pub fn run_frames(&mut self, n: u32) -> u32 {
-        let mut total_cycles = 0u32;
+        let mut cycles = 0u32;
         for _ in 0..n {
-            total_cycles += self.gb.next_frame();
+            let c = self.gb.next_frame();
+            cycles += c;
+            self.total_cycles += c as u64;
         }
-        total_cycles
+        cycles
     }
 
     /// Get the current PPU frame counter.
@@ -231,6 +252,70 @@ impl TestHarness {
         self.gb.write_memory(new_sp, (word & 0xFF) as u8);
         self.gb
             .write_memory(new_sp.wrapping_add(1), (word >> 8) as u8);
+    }
+
+    // ── Cycle tracking ──────────────────────────────────────────────
+
+    /// Get the total accumulated CPU cycles since harness creation.
+    pub fn total_cycles(&self) -> u64 {
+        self.total_cycles
+    }
+
+    // ── Joypad input ────────────────────────────────────────────────
+
+    /// Press a key, run `frames` frames, then release the key.
+    pub fn press(&mut self, key: PadKey, frames: u32) {
+        let raw = pad_key_to_u8(&key);
+        self.gb.key_press(key);
+        self.run_frames(frames);
+        self.gb.key_lift(PadKey::from_u8(raw));
+    }
+
+    /// Press and hold a key, then run `frames` frames (key stays held).
+    pub fn hold(&mut self, key: PadKey, frames: u32) {
+        self.gb.key_press(key);
+        self.run_frames(frames);
+    }
+
+    /// Release a previously held key.
+    pub fn release(&mut self, key: PadKey) {
+        self.gb.key_lift(key);
+    }
+
+    // ── Memory polling ──────────────────────────────────────────────
+
+    /// Run frames until `pred(mem[addr])` is true, up to `max_frames`.
+    /// Returns `true` if the predicate was satisfied.
+    pub fn wait_for_memory(
+        &mut self,
+        addr: u16,
+        pred: impl Fn(u8) -> bool,
+        max_frames: u32,
+    ) -> bool {
+        for _ in 0..max_frames {
+            if pred(self.read_mem(addr)) {
+                return true;
+            }
+            self.run_frames(1);
+        }
+        pred(self.read_mem(addr))
+    }
+
+    // ── Framebuffer / SRAM access ───────────────────────────────────
+
+    /// Capture the current framebuffer as RGB888 pixels (160x144x3 bytes).
+    pub fn capture_screenshot(&mut self) -> Vec<u8> {
+        self.gb.frame_buffer_eager()
+    }
+
+    /// Read the current SRAM data.
+    pub fn ram_data(&mut self) -> Vec<u8> {
+        self.gb.ram_data_eager()
+    }
+
+    /// Set SRAM data.
+    pub fn set_ram_data(&mut self, data: Vec<u8>) {
+        self.gb.set_ram_data(data);
     }
 }
 

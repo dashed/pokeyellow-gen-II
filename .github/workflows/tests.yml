@@ -1,0 +1,51 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - dashed-patch
+      - 'dashed/**'
+  pull_request:
+
+env:
+  rgbds_version: v1.0.1
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Checkout rgbds
+        uses: actions/checkout@v6
+        with:
+          path: rgbds
+          ref: ${{ env.rgbds_version }}
+          repository: gbdev/rgbds
+
+      - name: Install rgbds
+        working-directory: rgbds
+        run: |
+          sudo apt-get update
+          sudo apt-get install -yq bison libpng-dev pkg-config
+          sudo make -j$(nproc) install
+
+      - name: Remove rgbds
+        run: rm -rf rgbds
+
+      - name: Build ROM
+        run: make -j$(nproc)
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tests
+
+      - name: Run tests
+        run: make -C tests check

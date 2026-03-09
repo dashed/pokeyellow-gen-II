@@ -2937,9 +2937,6 @@ IF DEF(_DEBUG)
 	bit BIT_TEST_BATTLE, a
 	jp nz, Func_3d4f5
 ENDC
-	ld a, [wPlayerBattleStatus3]
-	bit TRANSFORMED, a
-	jp nz, MoveSelectionMenu
 	ld a, [wMenuItemToSwap]
 	and a
 	jr z, .noMenuItemSelected
@@ -2976,6 +2973,11 @@ ENDC
 	add b
 	ld [hl], a
 .swapMovesInPartyMon
+; Skip party data swap if transformed — battle move order still swapped above,
+; but we must not overwrite the real moveset with transformed moves.
+	ld a, [wPlayerBattleStatus3]
+	bit TRANSFORMED, a
+	jr nz, .doneSwap
 	ld hl, wPartyMon1Moves
 	ld a, [wPlayerMonNumber]
 	ld bc, PARTYMON_STRUCT_LENGTH
@@ -2986,6 +2988,7 @@ ENDC
 	ld bc, MON_PP - MON_MOVES
 	add hl, bc
 	call .swapBytes ; swap move PP
+.doneSwap
 	xor a
 	ld [wMenuItemToSwap], a ; deselect the item
 	jp MoveSelectionMenu

@@ -8,14 +8,8 @@
 //! After generation, manually verify the PNGs in `tests/golden/` and commit them.
 
 use pokeyellow_tests::{
-    compare_screenshot, golden_dir, save_screenshot, should_generate, TestHarness,
+    compare_screenshot, golden_dir, save_screenshot, should_generate, sym_addr, TestHarness,
 };
-
-/// wTileMap base address ($C3A0).
-const W_TILE_MAP: u16 = 0xC3A0;
-
-/// Tilemap address for PRESENTS text: hlcoord 7, 11 = wTileMap + 11*20 + 7.
-const PRESENTS_TILEMAP_ADDR: u16 = W_TILE_MAP + 11 * 20 + 7;
 
 /// First tile ID of PRESENTS graphic ($67).
 const PRESENTS_FIRST_TILE: u8 = 0x67;
@@ -35,7 +29,7 @@ fn presents_subtitle_golden_image() {
     // Run the game from boot through the intro sequence.
     // Poll the tilemap for the PRESENTS tile ($67) appearing at hlcoord 7,11.
     let found = h.wait_for_memory(
-        PRESENTS_TILEMAP_ADDR,
+        sym_addr("wTileMap") + 11 * 20 + 7,
         |tile| tile == PRESENTS_FIRST_TILE,
         MAX_INTRO_FRAMES,
     );
@@ -46,7 +40,7 @@ fn presents_subtitle_golden_image() {
         eprintln!(
             "PRESENTS tile $67 not found at tilemap ${:04X} after {MAX_INTRO_FRAMES} frames. \
              Skipping golden image test (ROM may not include PRESENTS patch).",
-            PRESENTS_TILEMAP_ADDR
+            sym_addr("wTileMap") + 11 * 20 + 7
         );
         return;
     }

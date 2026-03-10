@@ -2495,7 +2495,14 @@ PartyMenuOrRockOrRun:
 	ld hl, AnimationMinimizeMon
 	jr nz, .doEnemyMonAnimation
 ; enemy mon is not minimized
+; fix: in ghost battles, reload ghost sprite instead of revealing real species
+	call IsGhostBattle
+	jr nz, .notGhostReload
+	ld a, MON_GHOST
+	jr .gotEnemySpecies
+.notGhostReload
 	ld a, [wEnemyMonSpecies]
+.gotEnemySpecies
 	ld [wCurPartySpecies], a
 	ld [wCurSpecies], a
 	call GetMonHeader
@@ -6316,6 +6323,10 @@ LoadEnemyMonData:
 	ld de, wEnemyMonNick
 	ld bc, NAME_LENGTH
 	call CopyData
+; fix: don't mark species as seen in Pokédex during ghost battles — the player
+; hasn't identified the Pokémon yet (no Silph Scope).
+	call IsGhostBattle
+	jr z, .skipPokedexSeen
 	ld a, [wEnemyMonSpecies2]
 	ld [wPokedexNum], a
 	predef IndexToPokedex
@@ -6325,6 +6336,7 @@ LoadEnemyMonData:
 	ld b, FLAG_SET
 	ld hl, wPokedexSeen
 	predef FlagActionPredef ; mark this mon as seen in the pokedex
+.skipPokedexSeen
 	ld hl, wEnemyMonLevel
 	ld de, wEnemyMonUnmodifiedLevel
 	ld bc, 1 + NUM_STATS * 2

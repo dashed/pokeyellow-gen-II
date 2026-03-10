@@ -85,8 +85,14 @@ ENDM
 
 	call PrintText_NoCreatingTextBox
 	ld a, [wDoNotWaitForButtonPressAfterDisplayingText]
-	and a
-	jr nz, HoldTextDisplayOpen
+; 0 = normal (wait for button press), 1 = hold text open, 2 = close immediately
+; Close-immediately (2) is used by binocular scripts when the player is not facing up,
+; bypassing both wait loops so sprites are unfrozen promptly.
+; https://glitchcity.wiki/wiki/Binoculars_NPC_Pokemon_Yellow
+	dec a
+	jr z, HoldTextDisplayOpen       ; was 1 — hold text open while A held
+	inc a
+	jr nz, CloseTextDisplay          ; was ≥2 — close immediately (no wait)
 
 AfterDisplayingTextID::
 	ld a, [wEnteringCableClub]

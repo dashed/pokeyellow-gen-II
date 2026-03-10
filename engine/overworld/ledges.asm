@@ -39,6 +39,19 @@ HandleLedges::
 	ldh a, [hJoyHeld]
 	and e
 	ret z
+; Check if an NPC sprite occupies the landing tile (2 tiles ahead).
+; Without this check, the player can jump a ledge and land on top of an NPC.
+; https://glitchcity.wiki/wiki/NPC_collision_bypassing_glitch
+; https://bulbapedia.bulbagarden.net/wiki/List_of_overworld_glitches_in_Generation_I
+	push de
+	xor a
+	ldh [hSpriteIndex], a
+	ld d, $20 ; 2-tile range (ledge jump landing distance)
+	call IsSpriteInFrontOfPlayer2
+	ldh a, [hSpriteIndex]
+	and a ; NPC at landing position?
+	pop de
+	ret nz ; cancel jump if sprite is in the way
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
 	ld [wJoyIgnore], a
 	ld hl, wMovementFlags

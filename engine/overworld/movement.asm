@@ -316,7 +316,7 @@ UpdateSpriteInWalkingAnimation:
 	and $7f
 	ld [hl], a                       ; x#SPRITESTATEDATA2_MOVEMENTDELAY:
 	                                 ; set next movement delay to a random value in [0,$7f]
-	                                 ; note that value 0 actually makes the delay $100 (bug?)
+	                                 ; (delay 0 means move immediately — handled by UpdateSpriteMovementDelay)
 	dec h ; HIGH(wSpriteStateData1)
 	ldh a, [hCurrentSpriteOffset]
 	inc a
@@ -346,7 +346,13 @@ UpdateSpriteMovementDelay:
 	ld [hl], $0
 	jr .moving
 .tickMoveCounter
-	dec [hl]                ; x#SPRITESTATEDATA2_MOVEMENTDELAY
+; Fix: when delay is 0, `dec [hl]` wraps to $FF, adding ~256 frames
+; (~4.3 seconds) of spurious delay. Check for 0 first.
+; https://glitchcity.wiki/wiki/NPC_walking_behavior_glitches
+	ld a, [hl]              ; x#SPRITESTATEDATA2_MOVEMENTDELAY
+	and a
+	jr z, .moving           ; delay already expired — move now
+	dec [hl]
 	jr nz, NotYetMoving
 .moving
 	dec h
@@ -581,12 +587,15 @@ CanWalkOntoTile:
 	ld a, [hli]        ; x#SPRITESTATEDATA1_YPIXELS
 	add $4             ; align to blocks (Y pos is always 4 pixels off)
 	add d              ; add Y delta
-	cp $80             ; if value is >$80, the destination is off screen (either $81 or $FF underflow)
+; Fix: $80 and $90 are valid on-screen positions (bottom row / rightmost
+; column). The original thresholds excluded them via off-by-one.
+; https://glitchcity.wiki/wiki/NPC_walking_behavior_glitches
+	cp $81             ; if value >= $81, the destination is off screen (or $FF underflow)
 	jr nc, .impassable ; don't walk off screen
 	inc l
 	ld a, [hl]         ; x#SPRITESTATEDATA1_XPIXELS
 	add e              ; add X delta
-	cp $90             ; if value is >$90, the destination is off screen (either $91 or $FF underflow)
+	cp $91             ; if value >= $91, the destination is off screen (or $FF underflow)
 	jr nc, .impassable ; don't walk off screen
 	push de
 	push bc
@@ -614,14 +623,12 @@ CanWalkOntoTile:
 	bit 7, d           ; check if going upwards (d == -1)
 	jr nz, .upwards
 	add d
-	; bug: these tests against $5 probably were supposed to prevent
-	; sprites from walking out too far, but this line makes sprites get
-	; stuck whenever they walked upwards 5 steps
-	; on the other hand, the amount a sprite can walk out to the
-	; right of bottom is not limited (until the counter overflows)
-	; this was fixed in Yellow
-	cp $5
-	;jr c, .impassable  ; if [x#SPRITESTATEDATA2_YDISPLACEMENT]+d < 5, don't go
+; Fix: enforce upper bound for downward movement. Displacement starts
+; at $8; block when >= $11 (more than 8 steps from center), matching
+; the lower bound (sub 1 / jr c blocks at 0, also 8 steps).
+; https://glitchcity.wiki/wiki/NPC_walking_behavior_glitches
+	cp $11
+	jr nc, .impassable
 	jr .checkHorizontal
 .upwards
 	sub $1
@@ -632,7 +639,9 @@ CanWalkOntoTile:
 	bit 7, e           ; check if going left (e == -1)
 	jr nz, .left
 	add e
-	cp $5              ; compare, but no conditional jump like in the vertical check above (bug?)
+; Fix: enforce upper bound for rightward movement (same as downward).
+	cp $11
+	jr nc, .impassable
 	jr .passable
 .left
 	sub $1
@@ -661,7 +670,8 @@ CanWalkOntoTile:
 	call Random
 	ldh a, [hRandomAdd]
 	and $7f
-	ld [hl], a         ; x#SPRITESTATEDATA2_MOVEMENTDELAY: set to a random value in [0,$7f] (again with delay $100 if value is 0)
+	ld [hl], a         ; x#SPRITESTATEDATA2_MOVEMENTDELAY: set to a random value in [0,$7f]
+	                   ; (delay 0 means move immediately — handled by UpdateSpriteMovementDelay)
 	scf                ; set carry (marking failure to walk)
 	ret
 

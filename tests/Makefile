@@ -1,9 +1,11 @@
-.PHONY: check test clippy fmt fmt-check build clean
+.PHONY: check test clippy fmt fmt-check
+
+RUST_TEST_THREADS ?= 4
 
 check: clippy fmt-check test
 
 test:
-	cargo test
+	RUST_TEST_THREADS=$(RUST_TEST_THREADS) cargo test
 
 clippy:
 	cargo clippy -- -D warnings
@@ -13,9 +15,3 @@ fmt:
 
 fmt-check:
 	cargo fmt -- --check
-
-build:
-	cargo build
-
-clean:
-	cargo clean

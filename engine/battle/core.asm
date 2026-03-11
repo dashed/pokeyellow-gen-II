@@ -777,6 +777,13 @@ FaintEnemyPokemon:
 	hlcoord 0, 0
 	lb bc, 4, 11
 	call ClearScreenArea
+; fix: check if any party Pokémon are alive before playing victory music.
+; Without this, Explosion/Self-Destruct double-faints play victory music
+; even though the player lost.
+	call AnyPartyAlive
+	ld a, d
+	and a
+	push af ; Z = no party alive
 	ld a, [wIsInBattle]
 	dec a
 	jr z, .wild_win
@@ -792,14 +799,15 @@ FaintEnemyPokemon:
 	ld a, SFX_FAINT_THUD
 	call PlaySound
 	call WaitForSoundToFinish
+	pop af ; balance stack (trainer path doesn't play victory music here)
 	jr .sfxplayed
 .wild_win
+	pop af
+	jr z, .sfxplayed ; party dead — skip victory music
 	call EndLowHealthAlarm
 	ld a, MUSIC_DEFEATED_WILD_MON
 	call PlayBattleVictoryMusic
 .sfxplayed
-; bug: win sfx is played for wild battles before checking for player mon HP
-; this can lead to odd scenarios where both player and enemy faint, as the win sfx plays yet the player never won the battle
 	ld hl, wBattleMonHP
 	ld a, [hli]
 	or [hl]

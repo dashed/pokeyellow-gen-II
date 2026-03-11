@@ -1431,8 +1431,7 @@ LoadCurrentMapView::
 	dec b
 	jr nz, .rowLoop2
 	pop af
-	call BankswitchCommon
-	ret
+	jp BankswitchCommon
 
 AdvancePlayerSprite::
 	ld a, [wUpdateSpritesEnabled]
@@ -1917,8 +1916,7 @@ asm_0dbd:
 	ld a, [hl]
 	ld [wMapMusicROMBank], a ; music 2
 	pop af
-	call BankswitchCommon
-	ret
+	jp BankswitchCommon
 
 ; function to copy map connection data from ROM to WRAM
 ; Input: hl = source, de = destination
@@ -1979,8 +1977,7 @@ LoadMapData::
 	call PlayDefaultMusicFadeOutCurrent
 .restoreRomBank
 	pop af
-	call BankswitchCommon
-	ret
+	jp BankswitchCommon
 
 LoadScreenRelatedData::
 	call LoadTileBlockMap

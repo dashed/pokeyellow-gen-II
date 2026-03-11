@@ -73,28 +73,26 @@ fn lock_set_before_update_sprites_call() {
 
 #[test]
 fn lock_uses_nonzero_value() {
-    // The lock is set by reusing A=$FF from `ld a, $ff / ld [wUpdateSpritesEnabled], a`.
-    // Verify the `ldh [hOAMUpdateLocked], a` is preceded by a store of $FF to
-    // wUpdateSpritesEnabled, meaning A is $FF (nonzero) when the lock is written.
+    // The lock is set via `dec a` (A was 0 from the dec/ret nz guard, wraps to $FF).
+    // Verify `dec a` ($3D) followed by `ld [wUpdateSpritesEnabled], a` ($EA lo hi)
+    // followed by `ldh [hOAMUpdateLocked], a` ($E0 $D9), confirming A=$FF (nonzero).
     let mut h = TestHarness::new_headless();
     let base = sym_addr("UpdateSprites");
     let end = base + 30;
 
     for addr in base..end {
         if rom(&mut h, addr) == 0xE0 && rom(&mut h, addr + 1) == H_OAM_UPDATE_LOCKED_LO {
-            // The preceding instruction should be `ld [wUpdateSpritesEnabled], a` ($EA lo hi)
-            // which is 3 bytes. Before that: `ld a, $ff` ($3E $FF) which is 2 bytes.
-            // So at addr-5 we should see $3E $FF.
+            // Preceding: `ld [wUpdateSpritesEnabled], a` ($EA, 3 bytes), before that: `dec a` ($3D, 1 byte)
             assert_eq!(
-                rom(&mut h, addr - 5),
-                0x3E,
-                "expected ld a, $FF ($3E) 5 bytes before ldh at {:#06X}",
+                rom(&mut h, addr - 4),
+                0x3D,
+                "expected dec a ($3D) 4 bytes before ldh at {:#06X}",
                 addr
             );
             assert_eq!(
-                rom(&mut h, addr - 4),
-                0xFF,
-                "expected $FF operand 4 bytes before ldh at {:#06X}",
+                rom(&mut h, addr - 3),
+                0xEA,
+                "expected ld [nn], a ($EA) 3 bytes before ldh at {:#06X}",
                 addr
             );
             return;

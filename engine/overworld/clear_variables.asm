@@ -17,4 +17,10 @@ ClearVariablesOnEnterMap::
 	ld hl, wWhichTrade
 	ld bc, wStandingOnWarpPadOrHole - wWhichTrade
 	call FillMemory
+; Clear stale trainer encounter state (prevents Trainer Fly / Mew glitch).
+; BIT_SEEN_BY_TRAINER persists across map transitions if the player warps
+; away (Fly/Teleport/Dig) after a trainer spots them but before battle starts.
+; https://bulbapedia.bulbagarden.net/wiki/Mew_glitch
+	ld hl, wMiscFlags
+	res BIT_SEEN_BY_TRAINER, [hl]
 	ret

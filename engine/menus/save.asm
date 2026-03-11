@@ -214,6 +214,10 @@ SaveMainData:
 	ld de, sSpriteData
 	ld bc, wSpriteDataEnd - wSpriteDataStart
 	call CopyData
+	ld hl, wPartyDataStart
+	ld de, sPartyData
+	ld bc, wPartyDataEnd - wPartyDataStart
+	call CopyData
 
 ; this part is redundant, SaveCurrentBoxData is always called next
 	ld hl, wBoxDataStart

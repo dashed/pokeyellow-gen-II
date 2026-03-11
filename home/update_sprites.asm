@@ -8,7 +8,10 @@ UpdateSprites::
 	call BankswitchCommon
 	ld a, $ff
 	ld [wUpdateSpritesEnabled], a
+	ldh [hOAMUpdateLocked], a ; lock OAM DMA while building the buffer
 	call _UpdateSprites
+	xor a
+	ldh [hOAMUpdateLocked], a ; unlock — VBlank may now transfer OAM
 	ld a, $1
 	ld [wUpdateSpritesEnabled], a
 	pop af

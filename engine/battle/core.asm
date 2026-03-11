@@ -1224,7 +1224,7 @@ LinkBattleLostText:
 	text_end
 
 ; slides pic of fainted mon downwards until it disappears
-; bug: when this is called, [hAutoBGTransferEnabled] is non-zero, so there is screen tearing
+; fix: disable hAutoBGTransferEnabled during tilemap modification to prevent tearing
 SlideDownFaintedMonPic:
 	ld a, [wStatusFlags5]
 	push af
@@ -1236,6 +1236,8 @@ SlideDownFaintedMonPic:
 	push de
 	push hl
 	ld b, PIC_HEIGHT - 1 ; number of rows
+	xor a
+	ldh [hAutoBGTransferEnabled], a ; disable BG transfer while modifying tilemap
 .rowLoop
 	push bc
 	push hl
@@ -1260,6 +1262,8 @@ SlideDownFaintedMonPic:
 	add hl, bc
 	ld de, SevenSpacesText
 	call PlaceString
+	ld a, 1
+	ldh [hAutoBGTransferEnabled], a ; re-enable so DelayFrames transfers the completed frame
 	ld c, 2
 	call DelayFrames
 	pop hl
@@ -1278,7 +1282,7 @@ SevenSpacesText:
 ; slides the player or enemy trainer off screen
 ; a is the number of tiles to slide it horizontally (always 9 for the player trainer or 8 for the enemy trainer)
 ; if a is 8, the slide is to the right, else it is to the left
-; bug: when this is called, [hAutoBGTransferEnabled] is non-zero, so there is screen tearing
+; fix: disable hAutoBGTransferEnabled during tilemap modification to prevent tearing
 SlideTrainerPicOffScreen:
 	ldh [hSlideAmount], a
 	ld c, a
@@ -1286,6 +1290,8 @@ SlideTrainerPicOffScreen:
 	push bc
 	push hl
 	ld b, PIC_HEIGHT ; number of rows
+	xor a
+	ldh [hAutoBGTransferEnabled], a ; disable BG transfer while modifying tilemap
 .rowLoop
 	push hl
 	ldh a, [hSlideAmount]
@@ -1311,6 +1317,8 @@ SlideTrainerPicOffScreen:
 	add hl, de
 	dec b
 	jr nz, .rowLoop
+	ld a, 1
+	ldh [hAutoBGTransferEnabled], a ; re-enable so DelayFrames transfers the completed frame
 	ld c, 2
 	call DelayFrames
 	pop hl

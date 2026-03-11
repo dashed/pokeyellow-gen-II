@@ -119,16 +119,17 @@ fn jr_z_targets_stop_wheel() {
 fn wheel2_seven_bar_mode_uses_correct_threshold() {
     let mut h = rom_harness();
     let sev2 = sym_addr("SlotMachine_StopWheel2Early.sevenAndBarMode");
-    // After call SlotMachine_FindWheel1Wheel2Matches (3 bytes):
-    // ld a, [de] (1 byte) at +3
-    // cp HIGH(SLOTSBAR) + 1 (2 bytes) at +4
-    // ret nc (1 byte) at +6
-    assert_eq!(rom(&mut h, sev2 + 3), 0x1A, "ld a, [de] at +3");
-    assert_eq!(rom(&mut h, sev2 + 4), 0xFE, "cp n opcode at +4");
+    // After call (3 bytes) + ret nz (1 byte):
+    // ld a, [de] (1 byte) at +4
+    // cp HIGH(SLOTSBAR) + 1 (2 bytes) at +5
+    // ret nc (1 byte) at +7
+    assert_eq!(rom(&mut h, sev2 + 3), 0xC0, "ret nz at +3");
+    assert_eq!(rom(&mut h, sev2 + 4), 0x1A, "ld a, [de] at +4");
+    assert_eq!(rom(&mut h, sev2 + 5), 0xFE, "cp n opcode at +5");
     assert_eq!(
-        rom(&mut h, sev2 + 5),
+        rom(&mut h, sev2 + 6),
         0x07,
         "compare threshold should be $07 (HIGH(SLOTSBAR) + 1)"
     );
-    assert_eq!(rom(&mut h, sev2 + 6), 0xD0, "ret nc at +6");
+    assert_eq!(rom(&mut h, sev2 + 7), 0xD0, "ret nc at +7");
 }

@@ -42,6 +42,8 @@ MtMoonB2FResetScripts:
 	call nz, MtMoonB2FScript_HideJessieJames
 	xor a
 	ld [wJoyIgnore], a
+	ld hl, wStatusFlags4
+	res BIT_NO_BATTLES, [hl]
 MtMoonB2FSetScript:
 	ld [wMtMoonB2FCurScript], a
 	ld [wCurMapScript], a

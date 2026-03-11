@@ -1329,7 +1329,7 @@ CheckForTilePairCollisions::
 	ld a, [hl]
 	cp c
 	jr z, .foundMatch
-	jr .tilePairCollisionLoop
+	jr .retry
 .currentTileMatchesSecondInPair
 	dec hl
 	ld a, [hli]

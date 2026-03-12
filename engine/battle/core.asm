@@ -877,7 +877,6 @@ FaintEnemyPokemon:
 	ld hl, wEnemyMonBaseStats
 	ld c, NUM_STATS + 2
 .multiplyBaseStatsLoop
-	push bc
 	ld a, [hl]
 	ld d, a ; d = value (addend)
 	ld e, b ; e = loop counter (participant count)
@@ -887,7 +886,6 @@ FaintEnemyPokemon:
 	dec e
 	jr nz, .multiplyInnerLoop
 	ld [hli], a
-	pop bc
 	dec c
 	jr nz, .multiplyBaseStatsLoop
 

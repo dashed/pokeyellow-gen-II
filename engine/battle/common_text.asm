@@ -219,7 +219,7 @@ PlayerMon2Text:
 	call Divide
 	pop bc
 	pop de
-	ldh a, [hQuotient + 3] ; a = ((LastSwitchInEnemyMonHP - CurrentEnemyMonHP) / 25) / (EnemyMonMaxHP / 4)
+	ldh a, [hQuotient + 3] ; a = ((LastSwitchInEnemyMonHP - CurrentEnemyMonHP) * 25) / (EnemyMonMaxHP / 4)
 ; a approximates the percentage that the enemy mon's total HP has decreased
 ; since the last switch in. (Underflow case handled above by .gainedHP)
 	ld hl, EnoughText ; HP stayed the same

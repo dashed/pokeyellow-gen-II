@@ -37,8 +37,12 @@ SubstituteEffect_:
 	sbc 0
 	pop bc
 	jr c, .notEnoughHP ; underflow means user would be left with negative health
-                       ; bug: since it only branches on carry, it will possibly leave user with 0 HP
-; user has 0 or more HP
+	; fix: also reject if result is exactly 0 HP
+	ld e, a            ; save high byte in E (E is free after HP offset calc)
+	or d               ; Z iff A:D == 0 (remaining HP is exactly 0)
+	jr z, .notEnoughHP ; 0 HP remaining → too weak for Substitute
+	ld a, e            ; restore high byte
+; user has > 0 HP remaining
 	ld [hli], a ; save resulting HP after subtraction into current HP
 	ld [hl], d
 	ld h, b

@@ -5420,8 +5420,16 @@ AdjustDamageForMoveType:
 	ld [hl], a
 	or b ; is damage 0?
 	jr nz, .skipTypeImmunity
-; if damage is 0, make the move miss
-; this only occurs if a move that would do 2 or 3 damage is 0.25x effective against the target
+; damage is 0: either the target is immune (effectiveness = 0)
+; or the move is 0.25x effective and base damage (2 or 3) rounded to 0
+	ld a, [wDamageMultipliers]
+	and EFFECTIVENESS_MASK
+	jr z, .typeImmunity
+; fix: 0.25x rounding to 0 — clamp damage to minimum 1 instead of missing
+	ld [hl], 1 ; hl points at wDamage+1 (low byte)
+	jr .skipTypeImmunity
+.typeImmunity
+; type immune: make the move miss
 	inc a
 	ld [wMoveMissed], a
 .skipTypeImmunity

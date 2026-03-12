@@ -821,11 +821,17 @@ FaintEnemyPokemon:
 	ld [wBattleResult], a
 	ld b, EXP_ALL
 	call IsItemInBag
-	push af
-	jr z, .giveExpToMonsThatFought ; if no exp all, then jump
+	jr nz, .hasExpAll
 
-; the player has exp all
-; first, we halve the values that determine exp gain
+; no Exp. All — give exp only to mons that fought
+	xor a
+	ld [wBoostExpByExpAll], a
+	callfar GainExperience
+	ret
+
+.hasExpAll
+; the player has Exp. All
+; first, halve the values that determine exp gain
 ; the enemy mon base stats are added to stat exp, so they are halved
 ; the base exp (which determines normal exp) is also halved
 	ld hl, wEnemyMonBaseStats
@@ -836,18 +842,58 @@ FaintEnemyPokemon:
 	dec b
 	jr nz, .halveExpDataLoop
 
-; give exp (divided evenly) to the mons that actually fought in battle against the enemy mon that has fainted
-; if exp all is in the bag, this will be only be half of the stat exp and normal exp, due to the above loop
-.giveExpToMonsThatFought
+; fix: count the number of battle participants before GainExperience
+; divides wEnemyMonBaseStats in place (via DivideExpDataByNumMonsGainingExp).
+; we need the count afterward to multiply back (approximately restoring the
+; halved values — integer division truncation may lose a small amount).
+	ld a, [wPartyGainExpFlags]
+	ld b, a
+	xor a
+	ld c, PARTY_LENGTH
+	ld d, 0
+.countParticipantsLoop
+	xor a
+	srl b
+	adc d
+	ld d, a
+	dec c
+	jr nz, .countParticipantsLoop
+	push af ; save participant count
+
+; give half exp (divided among fighters) to mons that fought
 	xor a
 	ld [wBoostExpByExpAll], a
 	callfar GainExperience
-	pop af
-	ret z ; return if no exp all
 
-; the player has exp all
+; fix: DivideExpDataByNumMonsGainingExp divided wEnemyMonBaseStats by the
+; number of fighters. Multiply back to approximately restore the halved values
+; so the second GainExperience call distributes the correct half to all party
+; members. (Integer division truncation may lose a small amount per byte.)
+; Without this fix, the second call only gets (half / numFighters) instead of half.
+	pop af ; restore participant count
+	cp 2
+	jr c, .skipMultiply ; if only 1 fighter, no division happened
+	ld b, a ; b = participant count
+	ld hl, wEnemyMonBaseStats
+	ld c, NUM_STATS + 2
+.multiplyBaseStatsLoop
+	push bc
+	ld a, [hl]
+	ld d, a ; d = value (addend)
+	ld e, b ; e = loop counter (participant count)
+	dec e   ; already have 1× the value in a
+.multiplyInnerLoop
+	add d   ; a += value
+	dec e
+	jr nz, .multiplyInnerLoop
+	ld [hli], a
+	pop bc
+	dec c
+	jr nz, .multiplyBaseStatsLoop
+
+.skipMultiply
 ; now, set the gain exp flag for every party member
-; half of the total stat exp and normal exp will divided evenly amongst every party member
+; half of the total stat exp and normal exp will be divided evenly amongst every party member
 	ld a, TRUE
 	ld [wBoostExpByExpAll], a
 	ld a, [wPartyCount]

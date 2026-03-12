@@ -31,19 +31,15 @@ fn find_sgb_delay_pattern(h: &mut TestHarness, start: u16, end: u16) -> Option<u
     let sgb_lo = (on_sgb & 0xFF) as u8;
     let sgb_hi = (on_sgb >> 8) as u8;
 
-    for addr in start..end {
-        if rom(h, addr) == 0xFA
+    (start..end).find(|&addr| {
+        rom(h, addr) == 0xFA
             && rom(h, addr + 1) == sgb_lo
             && rom(h, addr + 2) == sgb_hi
             && rom(h, addr + 3) == 0xA7
             && rom(h, addr + 4) == 0xCC
             && rom(h, addr + 5) == d3_lo
             && rom(h, addr + 6) == d3_hi
-        {
-            return Some(addr);
-        }
-    }
-    None
+    })
 }
 
 // ─── Structural tests ────────────────────────────────────────────────
@@ -227,14 +223,9 @@ fn exactly_two_delay_patterns() {
 
     let mut count = 0;
     let mut search_start = base;
-    loop {
-        match find_sgb_delay_pattern(&mut h, search_start, end) {
-            Some(addr) => {
-                count += 1;
-                search_start = addr + 7;
-            }
-            None => break,
-        }
+    while let Some(addr) = find_sgb_delay_pattern(&mut h, search_start, end) {
+        count += 1;
+        search_start = addr + 7;
     }
     assert_eq!(
         count, 2,

@@ -121,8 +121,7 @@ fn call_load_screen_tiles_present() {
     let hi = (target >> 8) as u8;
     let mut found = false;
     for addr in start..end {
-        if rom(&mut h, addr) == CALL && rom(&mut h, addr + 1) == lo && rom(&mut h, addr + 2) == hi
-        {
+        if rom(&mut h, addr) == CALL && rom(&mut h, addr + 1) == lo && rom(&mut h, addr + 2) == hi {
             found = true;
             break;
         }

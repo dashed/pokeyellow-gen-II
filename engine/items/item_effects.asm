@@ -1752,6 +1752,12 @@ ItemUsePokeDoll:
 	ld a, [wIsInBattle]
 	dec a
 	jp nz, ItemUseNotTime
+; Prevent Poké Doll from working against the ghost Marowak.
+; Without this check, the player can skip acquiring the Silph Scope entirely.
+; https://glitchcity.wiki/wiki/Go_past_the_Marowak_ghost_without_a_Silph_Scope
+; https://bulbapedia.bulbagarden.net/wiki/Marowak_(ghost)
+	callfar IsGhostBattle
+	jp z, ItemUseNotTime
 	ld a, $01
 	ld [wEscapedFromBattle], a
 	jp PrintItemUseTextAndRemoveItem

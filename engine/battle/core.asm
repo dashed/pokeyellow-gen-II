@@ -4961,11 +4961,12 @@ ApplyAttackToPlayerPokemon:
 	srl a
 	add b
 	ld b, a ; b = attacker's level * 1.5
-; loop until a random number in the range [0, b) is found
-; this differs from the range when the player attacks, which is [1, b)
-; it's possible for the enemy to do 0 damage with Psywave, but the player always does at least 1 damage
+; fix: reject 0 damage to match the player's Psywave [1, b) range
+; (without this, 0 damage on one side but not the other desyncs link battles)
 .loop
 	call BattleRandom
+	and a
+	jr z, .loop
 	cp b
 	jr nc, .loop
 	ld b, a

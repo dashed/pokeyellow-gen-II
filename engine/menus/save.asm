@@ -139,10 +139,7 @@ SaveMenu:
 	farcall PrintSaveScreenText
 	ld c, 10
 	call DelayFrames
-	ld hl, WouldYouLikeToSaveText
-	call SaveTheGame_YesOrNo
-	and a   ;|0 = Yes|1 = No|
-	ret nz
+	; Skip "Would you like to save?" prompt — save immediately
 	ld c, 10
 	call DelayFrames
 	ld a, [wSaveFileStatus]
@@ -156,10 +153,7 @@ SaveMenu:
 	ret nz
 .save
 	call SaveGameData
-	ld hl, SavingText
-	call PrintText
-	ld c, 128
-	call DelayFrames
+	; Skip "Saving..." text and its 128-frame delay — show result immediately
 	ld hl, GameSavedText
 	call PrintText
 	ld c, 10
@@ -167,7 +161,7 @@ SaveMenu:
 	ld a, SFX_SAVE
 	call PlaySoundWaitForCurrent
 	call WaitForSoundToFinish
-	ld c, 30
+	ld c, 10 ; reduced from 30 frames
 	call DelayFrames
 	ret
 

@@ -482,15 +482,11 @@ ItemUseBall:
 
 	push hl
 
-; Bug: If the Pokémon is transformed, the Pokémon is assumed to be a Ditto.
-; This is a bug because a wild Pokémon could have used Transform via
-; Mirror Move even though the only wild Pokémon that knows Transform is Ditto.
+; fix: don't assume transformed Pokémon is Ditto — wEnemyMonSpecies2 already
+; holds the original species since Transform only overwrites wEnemyMonSpecies.
 	ld hl, wEnemyBattleStatus3
 	bit TRANSFORMED, [hl]
-	jr z, .notTransformed
-	ld a, DITTO
-	ld [wEnemyMonSpecies2], a
-	jr .skip6
+	jr nz, .skip6
 
 .notTransformed
 ; If the Pokémon is not transformed, set the transformed bit and copy the

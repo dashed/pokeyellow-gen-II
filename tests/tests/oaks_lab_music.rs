@@ -24,12 +24,8 @@ fn banked_harness() -> TestHarness {
 /// Scan for `ld hl, wStatusFlags7` ($21 $32 $D7) starting from `base`.
 fn find_ld_hl_status_flags7(h: &mut TestHarness, base: u16, end: u16) -> Option<u16> {
     // wStatusFlags7 = $D732 → lo=$32, hi=$D7
-    for addr in base..end {
-        if rom(h, addr) == 0x21 && rom(h, addr + 1) == 0x32 && rom(h, addr + 2) == 0xD7 {
-            return Some(addr);
-        }
-    }
-    None
+    (base..end)
+        .find(|&addr| rom(h, addr) == 0x21 && rom(h, addr + 1) == 0x32 && rom(h, addr + 2) == 0xD7)
 }
 
 // ─── Structural tests ────────────────────────────────────────────────

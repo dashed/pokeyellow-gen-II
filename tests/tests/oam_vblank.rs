@@ -48,10 +48,11 @@ fn lock_set_before_update_sprites_call() {
     let mut call_pos = None;
 
     for addr in base..end {
-        if rom(&mut h, addr) == 0xE0 && rom(&mut h, addr + 1) == H_OAM_UPDATE_LOCKED_LO {
-            if lock_pos.is_none() {
-                lock_pos = Some(addr);
-            }
+        if rom(&mut h, addr) == 0xE0
+            && rom(&mut h, addr + 1) == H_OAM_UPDATE_LOCKED_LO
+            && lock_pos.is_none()
+        {
+            lock_pos = Some(addr);
         }
         if rom(&mut h, addr) == 0xCD
             && rom(&mut h, addr + 1) == update_lo

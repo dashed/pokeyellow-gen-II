@@ -25,12 +25,8 @@ fn find_call_play_sound(h: &mut TestHarness, start: u16, end: u16) -> Option<u16
     let target = sym_addr("PlaySoundWaitForCurrent");
     let lo = (target & 0xFF) as u8;
     let hi = (target >> 8) as u8;
-    for addr in start..end {
-        if rom(h, addr) == 0xCD && rom(h, addr + 1) == lo && rom(h, addr + 2) == hi {
-            return Some(addr);
-        }
-    }
-    None
+    (start..end)
+        .find(|&addr| rom(h, addr) == 0xCD && rom(h, addr + 1) == lo && rom(h, addr + 2) == hi)
 }
 
 /// Scan for `call WaitForSoundToFinish` ($CD lo hi) within a range.
@@ -38,12 +34,8 @@ fn find_call_wait_for_sound(h: &mut TestHarness, start: u16, end: u16) -> Option
     let target = sym_addr("WaitForSoundToFinish");
     let lo = (target & 0xFF) as u8;
     let hi = (target >> 8) as u8;
-    for addr in start..end {
-        if rom(h, addr) == 0xCD && rom(h, addr + 1) == lo && rom(h, addr + 2) == hi {
-            return Some(addr);
-        }
-    }
-    None
+    (start..end)
+        .find(|&addr| rom(h, addr) == 0xCD && rom(h, addr + 1) == lo && rom(h, addr + 2) == hi)
 }
 
 // wAudioFadeOutControl = $CFC6

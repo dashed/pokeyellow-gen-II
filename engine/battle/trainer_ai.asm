@@ -556,6 +556,9 @@ AIPrintItemUseAndUpdateHPBar:
 	xor a
 	ld [wHPBarType], a
 	predef UpdateHPBar2
+	; fallthrough
+DrawEnemyHUDAndDecrementAICount:
+	callfar DrawEnemyHUDAndHPBar
 	jp DecrementAICount
 
 AISwitchIfEnoughMons:
@@ -627,7 +630,9 @@ AIUseFullHeal:
 	call AIPlayRestoringSFX
 	call AICureStatus
 	ld a, FULL_HEAL
-	jp AIPrintItemUse
+	ld [wAIItem], a
+	call AIPrintItemUse_
+	jp DrawEnemyHUDAndDecrementAICount
 
 AICureStatus:
 ; cures the status of enemy's active pokemon

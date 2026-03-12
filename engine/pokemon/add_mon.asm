@@ -261,6 +261,11 @@ AddPartyMon_WriteMovePP:
 	and a
 	jr z, .empty
 	dec a
+; Clamp glitch move index to prevent out-of-bounds Moves table read.
+	cp NUM_ATTACKS
+	jr c, .validMoveId
+	xor a
+.validMoveId
 	push hl
 	push de
 	push bc

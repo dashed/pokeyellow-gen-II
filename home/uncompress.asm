@@ -30,20 +30,33 @@ _UncompressSpriteData::
 	ld [wSpriteInputBitCounter], a
 	ld a, $3
 	ld [wSpriteOutputBitOffset], a
+	ld hl, wSpriteCurPosX
 	xor a
-	ld [wSpriteCurPosX], a
-	ld [wSpriteCurPosY], a
+	ld [hli], a               ; wSpriteCurPosX
+	ld [hl], a                ; wSpriteCurPosY (adjacent)
 	ld [wSpriteLoadFlags], a
 	call ReadNextInputByte    ; first byte of input determines sprite width (high nybble) and height (low nybble) in tiles (8x8 pixels)
 	ld b, a
-	and $f
+; Clamp height to [1, 7] to prevent sprite buffer overflow from glitch Pokémon.
+; The sprite buffers (sSpriteBuffer1/2) hold at most 7×7 tiles (392 bytes).
+; Without this clamp, MissingNo. and other glitch Pokémon can overflow into
+; sHallOfFame and corrupt SRAM.
+; https://bulbapedia.bulbagarden.net/wiki/MissingNo.
+; https://glitchcity.wiki/wiki/MissingNo.
+	and $7
+	jr nz, .heightNotZero
+	inc a
+.heightNotZero
 	add a
 	add a
 	add a
 	ld [wSpriteHeight], a
 	ld a, b
 	swap a
-	and $f
+	and $7
+	jr nz, .widthNotZero
+	inc a
+.widthNotZero
 	add a
 	add a
 	add a

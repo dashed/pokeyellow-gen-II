@@ -5325,9 +5325,23 @@ AdjustDamageForMoveType:
 	inc hl
 	ld a, [wDamageMultipliers]
 	and 1 << BIT_STAB_DAMAGE
-	ld b, a
+	ld b, a                    ; b = STAB bit (bit 7)
 	ld a, [hl] ; a = damage multiplier
 	ldh [hMultiplier], a
+	; fix: accumulate effectiveness multiplicatively instead of overwriting
+	; only 0 (immune), 5 (NVE ×0.5), or 20 (SE ×2) appear in TypeEffects table
+	and a
+	jr z, .gotMultiplier       ; immune: a=0 → overwrite accumulated to 0
+	ld c, a                    ; c = new effectiveness (5 or 20)
+	ld a, [wDamageMultipliers]
+	and EFFECTIVENESS_MASK     ; accumulated effectiveness (sans STAB)
+	bit 4, c                   ; bit 4 is set in 20 ($14), clear in 5 ($05)
+	jr z, .halveEffectiveness
+	sla a                      ; super effective: double accumulated
+	jr .gotMultiplier
+.halveEffectiveness
+	srl a                      ; not very effective: halve accumulated
+.gotMultiplier
 	add b
 	ld [wDamageMultipliers], a
 	xor a

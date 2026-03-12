@@ -1350,6 +1350,10 @@ EnemySendOutFirstMon:
 	ld hl, wPlayerUsedMove
 	ld [hli], a
 	ld [hl], a
+; fix: clear wDamage so Counter can't use stale damage from a previous matchup
+	ld hl, wDamage
+	ld [hli], a
+	ld [hl], a
 	dec a
 	ld [wAICount], a
 	ld hl, wPlayerBattleStatus1
@@ -1799,6 +1803,10 @@ SendOutMon:
 	ld [wPlayerDisabledMove], a
 	ld [wPlayerDisabledMoveNumber], a
 	ld [wPlayerMonMinimized], a
+; fix: clear wDamage so Counter can't use stale damage from a previous matchup
+	ld hl, wDamage
+	ld [hli], a
+	ld [hl], a
 	ld b, SET_PAL_BATTLE
 	call RunPaletteCommand
 	ld hl, wEnemyBattleStatus1

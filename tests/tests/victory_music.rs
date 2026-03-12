@@ -28,12 +28,8 @@ fn find_call_any_party_alive(h: &mut TestHarness, start: u16, end: u16) -> Optio
     let target = sym_addr("AnyPartyAlive");
     let lo = (target & 0xFF) as u8;
     let hi = (target >> 8) as u8;
-    for addr in start..end {
-        if rom(h, addr) == 0xCD && rom(h, addr + 1) == lo && rom(h, addr + 2) == hi {
-            return Some(addr);
-        }
-    }
-    None
+    (start..end)
+        .find(|&addr| rom(h, addr) == 0xCD && rom(h, addr + 1) == lo && rom(h, addr + 2) == hi)
 }
 
 // ─── Structural tests ────────────────────────────────────────────────

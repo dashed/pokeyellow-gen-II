@@ -203,16 +203,13 @@ fn player_bide_misses_invulnerable_enemy() {
 fn player_bide_hits_vulnerable_enemy() {
     // Enemy is not invulnerable — Bide should hit
     let missed = run_player_bide_invulnerable_check(0x00);
-    assert_eq!(
-        missed, 0,
-        "Player Bide should hit when enemy is vulnerable"
-    );
+    assert_eq!(missed, 0, "Player Bide should hit when enemy is vulnerable");
 }
 
 #[test]
 fn player_bide_checks_only_invulnerable_bit() {
     // Other status bits set but NOT invulnerable — should still hit
-    let status = 0xFF & !(1 << INVULNERABLE_BIT); // all bits except INVULNERABLE
+    let status = !(1 << INVULNERABLE_BIT); // all bits except INVULNERABLE
     let missed = run_player_bide_invulnerable_check(status);
     assert_eq!(
         missed, 0,
@@ -234,16 +231,13 @@ fn enemy_bide_misses_invulnerable_player() {
 fn enemy_bide_hits_vulnerable_player() {
     // Player is not invulnerable — enemy Bide should hit
     let missed = run_enemy_bide_invulnerable_check(0x00);
-    assert_eq!(
-        missed, 0,
-        "Enemy Bide should hit when player is vulnerable"
-    );
+    assert_eq!(missed, 0, "Enemy Bide should hit when player is vulnerable");
 }
 
 #[test]
 fn enemy_bide_checks_only_invulnerable_bit() {
     // Other status bits set but NOT invulnerable — should still hit
-    let status = 0xFF & !(1 << INVULNERABLE_BIT);
+    let status = !(1 << INVULNERABLE_BIT);
     let missed = run_enemy_bide_invulnerable_check(status);
     assert_eq!(
         missed, 0,

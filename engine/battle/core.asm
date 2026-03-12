@@ -3760,6 +3760,14 @@ CheckPlayerStatusConditions:
 	ld [hl], a
 	ld a, BIDE
 	ld [wPlayerMoveNum], a
+; fix: Bide should miss against invulnerable target (Fly/Dig)
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Bide_errors
+	ld a, [wEnemyBattleStatus1]
+	bit INVULNERABLE, a
+	jr z, .playerBideNotBlocked
+	ld a, 1
+	ld [wMoveMissed], a
+.playerBideNotBlocked
 	ld hl, HandleIfPlayerMoveMissed ; skip damage calculation, DecrementPP and MoveHitTest
 	jp .returnToHL
 
@@ -6170,6 +6178,13 @@ CheckEnemyStatusConditions:
 	ld [hl], a
 	ld a, BIDE
 	ld [wEnemyMoveNum], a
+; fix: Bide should miss against invulnerable target (Fly/Dig)
+	ld a, [wPlayerBattleStatus1]
+	bit INVULNERABLE, a
+	jr z, .enemyBideNotBlocked
+	ld a, 1
+	ld [wMoveMissed], a
+.enemyBideNotBlocked
 	call SwapPlayerAndEnemyLevels
 	ld hl, HandleIfEnemyMoveMissed ; skip damage calculation, DecrementPP and MoveHitTest
 	jp .enemyReturnToHL

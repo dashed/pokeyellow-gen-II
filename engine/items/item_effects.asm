@@ -995,17 +995,21 @@ ItemUseMedicine:
 ; if it is active in battle
 	xor a
 	ld [wBattleMonStatus], a ; remove the status ailment in the in-battle pokemon data
-	push hl
-	ld hl, wPlayerBattleStatus3
-	res BADLY_POISONED, [hl] ; heal Toxic status
-	pop hl
-	ld bc, MON_STATS - MON_STATUS
-	add hl, bc ; hl now points to party stats
-	ld de, wBattleMonStats
-	ld bc, NUM_STATS * 2
-	call CopyData ; copy party stats to in-battle stat data
-	predef DoubleOrHalveSelectedStats
+	call .reapplyStatModsAfterCure
 	jp .doneHealing
+
+; Reapply stat stage modifiers and badge boosts after curing a status ailment.
+; The vanilla code copied raw party stats to battle stats, wiping out all stat
+; stage changes and badge boosts. This subroutine recalculates battle stats from
+; unmodified stats using the current stat stages, then reapplies badge boosts.
+.reapplyStatModsAfterCure
+	ld hl, wPlayerBattleStatus3
+	res BADLY_POISONED, [hl] ; clear Toxic escalation flag
+	xor a
+	ld [wCalculateWhoseStats], a ; 0 = player
+	callfar CalculateModifiedStats
+	callfar ApplyBadgeStatBoosts
+	ret
 
 .healHP
 	inc hl ; hl = address of current HP
@@ -1290,6 +1294,9 @@ ItemUseMedicine:
 	jr nz, .calculateHPBarCoords
 	xor a
 	ld [wBattleMonStatus], a ; remove the status ailment in the in-battle pokemon data
+	push de
+	call .reapplyStatModsAfterCure
+	pop de
 .calculateHPBarCoords
 	hlcoord 4, -1
 	ld bc, 2 * SCREEN_WIDTH

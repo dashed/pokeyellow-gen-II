@@ -3582,6 +3582,8 @@ CheckPlayerStatusConditions:
 	call PrintText
 .sleepDone
 	xor a
+	ld [wDamage], a ; fix: clear stale damage to prevent Counter own-damage reflection
+	ld [wDamage + 1], a
 	ld [wPlayerUsedMove], a
 	ld hl, ExecutePlayerMoveDone ; player can't move this turn
 	jp .returnToHL
@@ -3592,6 +3594,8 @@ CheckPlayerStatusConditions:
 	ld hl, IsFrozenText
 	call PrintText
 	xor a
+	ld [wDamage], a ; fix: clear stale damage to prevent Counter own-damage reflection
+	ld [wDamage + 1], a
 	ld [wPlayerUsedMove], a
 	ld hl, ExecutePlayerMoveDone ; player can't move this turn
 	jp .returnToHL
@@ -3710,6 +3714,12 @@ CheckPlayerStatusConditions:
 	ld a, STATUS_AFFECTED_ANIM
 	call PlayMoveAnimation
 .NotFlyOrChargeEffect
+; fix: clear stale damage after full paralysis or confusion self-hit
+; to prevent Counter own-damage reflection
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Counter_glitches
+	xor a
+	ld [wDamage], a
+	ld [wDamage + 1], a
 	ld hl, ExecutePlayerMoveDone
 	jp .returnToHL ; if using a two-turn move, we need to recharge the first turn
 
@@ -5972,6 +5982,8 @@ CheckEnemyStatusConditions:
 	call PrintText
 .sleepDone
 	xor a
+	ld [wDamage], a ; fix: clear stale damage to prevent Counter own-damage reflection
+	ld [wDamage + 1], a
 	ld [wEnemyUsedMove], a
 	ld hl, ExecuteEnemyMoveDone ; enemy can't move this turn
 	jp .enemyReturnToHL
@@ -5981,6 +5993,8 @@ CheckEnemyStatusConditions:
 	ld hl, IsFrozenText
 	call PrintText
 	xor a
+	ld [wDamage], a ; fix: clear stale damage to prevent Counter own-damage reflection
+	ld [wDamage + 1], a
 	ld [wEnemyUsedMove], a
 	ld hl, ExecuteEnemyMoveDone ; enemy can't move this turn
 	jp .enemyReturnToHL
@@ -6129,6 +6143,11 @@ CheckEnemyStatusConditions:
 	ld a, STATUS_AFFECTED_ANIM
 	call PlayMoveAnimation
 .notFlyOrChargeEffect
+; fix: clear stale damage after full paralysis or confusion self-hit
+; to prevent Counter own-damage reflection
+	xor a
+	ld [wDamage], a
+	ld [wDamage + 1], a
 	ld hl, ExecuteEnemyMoveDone
 	jp .enemyReturnToHL ; if using a two-turn move, enemy needs to recharge the first turn
 .checkIfUsingBide

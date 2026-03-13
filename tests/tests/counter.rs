@@ -1,17 +1,25 @@
 //! Emulator-based tests for the Counter stale damage fix.
 //!
-//! Counter doubles `wDamage` and deals it back. The bug is that `wDamage` is
-//! shared between player and enemy and was never cleared on switch-in or
-//! between battles, so Counter could use stale damage from a previous
-//! matchup or even a previous battle.
+//! Counter doubles `wDamage` and deals it back. Two bugs:
 //!
-//! Our fix clears `wDamage` in `InitBattleVariables`, `EnemySendOutFirstMon`,
-//! and `SendOutMon`.
+//! 1. **Stale damage from switch/battle**: `wDamage` was never cleared on
+//!    switch-in or between battles, so Counter could use stale damage.
+//!    Fix: clear `wDamage` in `InitBattleVariables`, `EnemySendOutFirstMon`,
+//!    and `SendOutMon`.
+//!
+//! 2. **Own-damage reflection**: `wDamage` is shared by both sides. When the
+//!    Counter target can't move (frozen, asleep, fully paralyzed, confused
+//!    self-hit), `wDamage` retains stale or self-inflicted damage, allowing
+//!    Counter to reflect the user's own damage instead of the opponent's.
+//!    Fix: clear `wDamage` in sleep, frozen, and MonHurtItselfOrFullyParalysed
+//!    paths on both player and enemy sides.
+//!
+//! Reference: https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Counter_glitches
 //!
 //! Test approach: run HandleCounterMove (or its `.counterableType` sub-path)
 //! with controlled `wDamage` and move selection values, then check whether
 //! Counter hit (wMoveMissed=0, wDamage doubled) or missed (wMoveMissed=1).
-//! We stop at the `call MoveHitTest` instruction ($6269) for "hit" cases
+//! We stop at the `call MoveHitTest` instruction for "hit" cases
 //! since MoveHitTest requires full battle state that's out of scope here.
 
 use pokeyellow_tests::{sym_addr, sym_bank, TestHarness};
@@ -277,5 +285,96 @@ fn full_counter_misses_when_opponent_has_zero_power() {
         result,
         CounterResult::Missed,
         "Counter should miss if opponent's last move has 0 base power"
+    );
+}
+
+// ─── Counter own-damage reflection fix: ROM byte tests ──────────────
+
+fn rom(h: &mut TestHarness, addr: u16) -> u8 {
+    h.read_mem(addr)
+}
+
+/// Check that `ld [wDamage], a` ($EA lo hi) appears between two addresses.
+fn has_ld_w_damage(h: &mut TestHarness, start: u16, end: u16) -> bool {
+    let w_damage = sym_addr("wDamage");
+    let lo = (w_damage & 0xFF) as u8;
+    let hi = (w_damage >> 8) as u8;
+    for addr in start..end {
+        if rom(h, addr) == 0xEA && rom(h, addr + 1) == lo && rom(h, addr + 2) == hi {
+            return true;
+        }
+    }
+    false
+}
+
+#[test]
+fn player_sleep_path_clears_w_damage() {
+    let mut h = TestHarness::new_headless();
+    h.select_rom_bank(sym_bank("CheckPlayerStatusConditions"));
+    let sleep_done = sym_addr("CheckPlayerStatusConditions.sleepDone");
+    let frozen = sym_addr("CheckPlayerStatusConditions.FrozenCheck");
+    assert!(
+        has_ld_w_damage(&mut h, sleep_done, frozen),
+        "Player sleep path should clear wDamage between .sleepDone and .FrozenCheck"
+    );
+}
+
+#[test]
+fn player_frozen_path_clears_w_damage() {
+    let mut h = TestHarness::new_headless();
+    h.select_rom_bank(sym_bank("CheckPlayerStatusConditions"));
+    let frozen = sym_addr("CheckPlayerStatusConditions.FrozenCheck");
+    let held = sym_addr("CheckPlayerStatusConditions.HeldInPlaceCheck");
+    assert!(
+        has_ld_w_damage(&mut h, frozen, held),
+        "Player frozen path should clear wDamage between .FrozenCheck and .HeldInPlaceCheck"
+    );
+}
+
+#[test]
+fn player_paralysis_path_clears_w_damage() {
+    let mut h = TestHarness::new_headless();
+    h.select_rom_bank(sym_bank("CheckPlayerStatusConditions"));
+    let not_fly = sym_addr("CheckPlayerStatusConditions.NotFlyOrChargeEffect");
+    let bide = sym_addr("CheckPlayerStatusConditions.BideCheck");
+    assert!(
+        has_ld_w_damage(&mut h, not_fly, bide),
+        "Player MonHurtItselfOrFullyParalysed path should clear wDamage"
+    );
+}
+
+#[test]
+fn enemy_sleep_path_clears_w_damage() {
+    let mut h = TestHarness::new_headless();
+    h.select_rom_bank(sym_bank("CheckEnemyStatusConditions"));
+    let sleep_done = sym_addr("CheckEnemyStatusConditions.sleepDone");
+    let frozen = sym_addr("CheckEnemyStatusConditions.checkIfFrozen");
+    assert!(
+        has_ld_w_damage(&mut h, sleep_done, frozen),
+        "Enemy sleep path should clear wDamage between .sleepDone and .checkIfFrozen"
+    );
+}
+
+#[test]
+fn enemy_frozen_path_clears_w_damage() {
+    let mut h = TestHarness::new_headless();
+    h.select_rom_bank(sym_bank("CheckEnemyStatusConditions"));
+    let frozen = sym_addr("CheckEnemyStatusConditions.checkIfFrozen");
+    let trapped = sym_addr("CheckEnemyStatusConditions.checkIfTrapped");
+    assert!(
+        has_ld_w_damage(&mut h, frozen, trapped),
+        "Enemy frozen path should clear wDamage between .checkIfFrozen and .checkIfTrapped"
+    );
+}
+
+#[test]
+fn enemy_paralysis_path_clears_w_damage() {
+    let mut h = TestHarness::new_headless();
+    h.select_rom_bank(sym_bank("CheckEnemyStatusConditions"));
+    let not_fly = sym_addr("CheckEnemyStatusConditions.notFlyOrChargeEffect");
+    let bide = sym_addr("CheckEnemyStatusConditions.checkIfUsingBide");
+    assert!(
+        has_ld_w_damage(&mut h, not_fly, bide),
+        "Enemy monHurtItselfOrFullyParalysed path should clear wDamage"
     );
 }

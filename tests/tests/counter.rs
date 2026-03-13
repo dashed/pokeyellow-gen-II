@@ -126,15 +126,15 @@ fn run_full_counter(
     h.write_mem(sym_addr("hWhoseTurn"), whose_turn);
 
     if whose_turn == 0 {
-        // Player's turn: player uses Counter, checks enemy's move
+        // Player's turn: player uses Counter, checks enemy's used move
         h.write_mem(sym_addr("wPlayerSelectedMove"), user_move);
-        h.write_mem(sym_addr("wEnemySelectedMove"), opponent_move);
+        h.write_mem(sym_addr("wEnemyUsedMove"), opponent_move); // fix: was wEnemySelectedMove
         h.write_mem(sym_addr("wEnemyMovePower"), opponent_power);
         h.write_mem(sym_addr("wEnemyMoveType"), opponent_type);
     } else {
-        // Enemy's turn: enemy uses Counter, checks player's move
+        // Enemy's turn: enemy uses Counter, checks player's used move
         h.write_mem(sym_addr("wEnemySelectedMove"), user_move);
-        h.write_mem(sym_addr("wPlayerSelectedMove"), opponent_move);
+        h.write_mem(sym_addr("wPlayerUsedMove"), opponent_move); // fix: was wPlayerSelectedMove
         h.write_mem(sym_addr("wPlayerMovePower"), opponent_power);
         h.write_mem(sym_addr("wPlayerMoveType"), opponent_type);
     }
@@ -376,5 +376,60 @@ fn enemy_paralysis_path_clears_w_damage() {
     assert!(
         has_ld_w_damage(&mut h, not_fly, bide),
         "Enemy monHurtItselfOrFullyParalysed path should clear wDamage"
+    );
+}
+
+// ─── Counter link desync fix: ROM byte tests ────────────────────────
+
+/// Check that `ld hl, addr` ($21 lo hi) loads the expected address.
+fn ld_hl_target(h: &mut TestHarness, addr: u16) -> u16 {
+    assert_eq!(rom(h, addr), 0x21, "expected ld hl, nn at {addr:#06x}");
+    let lo = rom(h, addr + 1) as u16;
+    let hi = rom(h, addr + 2) as u16;
+    (hi << 8) | lo
+}
+
+#[test]
+fn player_turn_checks_enemy_used_move_not_selected() {
+    // When player uses Counter (hWhoseTurn=0), HandleCounterMove should
+    // load HL with wEnemyUsedMove, NOT wEnemySelectedMove
+    let mut h = TestHarness::new_headless();
+    h.select_rom_bank(sym_bank("HandleCounterMove"));
+    let base = sym_addr("HandleCounterMove");
+    // Layout: ldh a,[hWhoseTurn] (2) / and a (1) / ld hl, wEnemyUsedMove (3)
+    let ld_hl_addr = base + 3; // offset past ldh + and a
+    let target = ld_hl_target(&mut h, ld_hl_addr);
+    assert_eq!(
+        target,
+        sym_addr("wEnemyUsedMove"),
+        "Player turn: HL should load wEnemyUsedMove, not wEnemySelectedMove"
+    );
+    assert_ne!(
+        target,
+        sym_addr("wEnemySelectedMove"),
+        "Player turn: HL must NOT be wEnemySelectedMove (cursor-polluted)"
+    );
+}
+
+#[test]
+fn enemy_turn_checks_player_used_move_not_selected() {
+    // When enemy uses Counter (hWhoseTurn=1), HandleCounterMove should
+    // load HL with wPlayerUsedMove, NOT wPlayerSelectedMove
+    let mut h = TestHarness::new_headless();
+    h.select_rom_bank(sym_bank("HandleCounterMove"));
+    let base = sym_addr("HandleCounterMove");
+    // Layout: ldh (2) / and a (1) / ld hl (3) / ld de (3) / ld a,[nn] (3) / jr z (2)
+    // = offset 14 for the enemy's ld hl
+    let ld_hl_addr = base + 14;
+    let target = ld_hl_target(&mut h, ld_hl_addr);
+    assert_eq!(
+        target,
+        sym_addr("wPlayerUsedMove"),
+        "Enemy turn: HL should load wPlayerUsedMove, not wPlayerSelectedMove"
+    );
+    assert_ne!(
+        target,
+        sym_addr("wPlayerSelectedMove"),
+        "Enemy turn: HL must NOT be wPlayerSelectedMove (cursor-polluted)"
     );
 }

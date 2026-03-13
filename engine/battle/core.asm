@@ -4798,21 +4798,23 @@ INCLUDE "data/battle/critical_hit_moves.asm"
 
 ; function to determine if Counter hits and if so, how much damage it does
 HandleCounterMove:
-; The variables checked by Counter are updated whenever the cursor points to a new move in the battle selection menu.
-; This is irrelevant for the opponent's side outside of link battles, since the move selection is controlled by the AI.
-; However, in the scenario where the player switches out and the opponent uses Counter,
-; the outcome may be affected by the player's actions in the move selection menu prior to switching the Pokemon.
-; This might also lead to desync glitches in link battles.
+; fix: Check wUsedMove (set when "[Mon] used [Move]!" prints) instead of wSelectedMove
+; (polluted by cursor movement in the move selection menu). This prevents link battle
+; desynchronization when the player moves the cursor to a different move type then switches.
+; The attacker check (am I using Counter?) still uses wSelectedMove since the attacker
+; has confirmed Counter from the menu but hasn't executed it yet (wUsedMove not set).
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Counter_glitches
+; https://glitchcity.wiki/wiki/Counter_glitches_(Generation_I)
 
 	ldh a, [hWhoseTurn] ; whose turn
 	and a
 ; player's turn
-	ld hl, wEnemySelectedMove
+	ld hl, wEnemyUsedMove ; fix: was wEnemySelectedMove (cursor-polluted)
 	ld de, wEnemyMovePower
 	ld a, [wPlayerSelectedMove]
 	jr z, .next
 ; enemy's turn
-	ld hl, wPlayerSelectedMove
+	ld hl, wPlayerUsedMove ; fix: was wPlayerSelectedMove (cursor-polluted)
 	ld de, wPlayerMovePower
 	ld a, [wEnemySelectedMove]
 .next
@@ -4822,11 +4824,11 @@ HandleCounterMove:
 	ld [wMoveMissed], a ; initialize the move missed variable to true (it is set to false below if the move hits)
 	ld a, [hl]
 	cp COUNTER
-	ret z ; miss if the opponent's last selected move is Counter.
+	ret z ; miss if the opponent's last used move is Counter.
 	ld a, [de]
 	and a
-	ret z ; miss if the opponent's last selected move's Base Power is 0.
-; check if the move the target last selected was Normal or Fighting type
+	ret z ; miss if the opponent's last used move's Base Power is 0.
+; check if the move the target last used was Normal or Fighting type
 	inc de
 	ld a, [de]
 	and a ; normal type

@@ -1734,7 +1734,9 @@ wSavedTileAnimations:: db
 
 wDamage:: dw
 
-	ds 2
+; saved copy of wDamage before MoveHitTest zeros it on a miss,
+; so Jump Kick / Hi Jump Kick crash damage can use the real value
+wJumpKickMissDamage:: dw
 
 wRepelRemainingSteps:: db
 

@@ -3995,9 +3995,8 @@ PrintMoveFailureText:
 	ret nz
 
 	; if you get here, the mon used jump kick or hi jump kick and missed
-	ld hl, wDamage ; since the move missed, wDamage will always contain 0 at this point.
-	                ; Thus, recoil damage will always be equal to 1
-	                ; even if it was intended to be potential damage/8.
+	; fix: read saved pre-miss damage instead of zeroed wDamage
+	ld hl, wJumpKickMissDamage
 	ld a, [hli]
 	ld b, [hl]
 	srl a
@@ -4006,9 +4005,10 @@ PrintMoveFailureText:
 	rr b
 	srl a
 	rr b
-	ld [hl], b
-	dec hl
+	; store crash damage (damage/8) in wDamage for ApplyDamage
+	ld hl, wDamage
 	ld [hli], a
+	ld [hl], b
 	or b
 	jr nz, .applyRecoil
 	inc a
@@ -5625,10 +5625,17 @@ MoveHitTest:
 	jr nc, .moveMissed
 	ret
 .moveMissed
+; fix: save wDamage before zeroing so Jump Kick/Hi Jump Kick crash damage
+; can use the real calculated damage instead of always getting 1 HP.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Jump_Kick_and_Hi_Jump_Kick.27s_crash_damage
+	ld hl, wDamage
+	ld a, [hli]
+	ld [wJumpKickMissDamage], a
+	ld a, [hl]
+	ld [wJumpKickMissDamage + 1], a
 	xor a
-	ld hl, wDamage ; zero the damage
-	ld [hli], a
-	ld [hl], a
+	ld [hld], a ; zero wDamage + 1
+	ld [hl], a  ; zero wDamage
 	inc a
 	ld [wMoveMissed], a
 	ldh a, [hWhoseTurn]

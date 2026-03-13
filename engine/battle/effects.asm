@@ -363,6 +363,9 @@ CheckDefrost:
 	call AddNTimes
 	xor a
 	ld [hl], a ; clear status in roster
+	; fix: prevent defrosted Pokémon from attacking this turn (defrost move forcing bug)
+	dec a ; a = 0 → $FF = CANNOT_MOVE
+	ld [wEnemySelectedMove], a
 	ld hl, FireDefrostedText
 	jr .common
 .opponent
@@ -376,6 +379,9 @@ CheckDefrost:
 	call AddNTimes
 	xor a
 	ld [hl], a
+	; fix: prevent defrosted Pokémon from attacking this turn (defrost move forcing bug)
+	dec a ; a = 0 → $FF = CANNOT_MOVE
+	ld [wPlayerSelectedMove], a
 	ld hl, FireDefrostedText
 .common
 	jp PrintText

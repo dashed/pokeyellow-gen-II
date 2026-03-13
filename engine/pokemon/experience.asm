@@ -134,6 +134,14 @@ CalcExperience::
 	ldh a, [hExperience]
 	adc b
 	ldh [hExperience], a
+; fix: clamp underflowed experience to 0 (prevents Medium Slow level 1 → 100 jump)
+; legitimate exp values never exceed ~1.25M ($1312D0), so bit 7 set = underflow
+	bit 7, a
+	ret z ; return if non-negative
+	xor a
+	ldh [hExperience], a
+	ldh [hExperience + 1], a
+	ldh [hExperience + 2], a
 	ret
 
 ; calculates d*d

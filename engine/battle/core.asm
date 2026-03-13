@@ -4368,7 +4368,12 @@ GetDamageVarsForPlayerAttack:
 	rr c
 	srl b
 	rr c
-; defensive stat can actually end up as 0, leading to a division by 0 freeze during damage calculation
+; fix: clamp defense to minimum 1 to prevent division by 0 freeze
+	ld a, c
+	and a
+	jr nz, .defNonZero
+	inc c
+.defNonZero
 ; hl /= 4 (scale player's offensive stat)
 	srl h
 	rr l
@@ -4481,7 +4486,12 @@ GetDamageVarsForEnemyAttack:
 	rr c
 	srl b
 	rr c
-; defensive stat can actually end up as 0, leading to a division by 0 freeze during damage calculation
+; fix: clamp defense to minimum 1 to prevent division by 0 freeze
+	ld a, c
+	and a
+	jr nz, .defNonZero
+	inc c
+.defNonZero
 ; hl /= 4 (scale enemy's offensive stat)
 	srl h
 	rr l

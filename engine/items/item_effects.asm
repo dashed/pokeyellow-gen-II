@@ -192,9 +192,19 @@ ItemUseBall:
 ; Poké Ball:         [0, 255]
 ; Great Ball:        [0, 200]
 ; Ultra/Safari Ball: [0, 150]
-; Loop until an acceptable number is found.
+;
+; fix: Replace rejection sampling with multiplication-based range reduction.
+; The original loop called Random repeatedly until the value fell within range.
+; Because the Gen I RNG (rDIV-based) produces correlated consecutive values,
+; the number of rejection iterations deterministically linked Rand1 and Rand2,
+; causing significant catch rate bias — Ultra Balls could be worse than Poké
+; Balls, and Safari Zone Pokémon were much harder to catch than intended.
+; Fix: call Random once and compute Rand1 = Random * scale / 256, which maps
+; [0,255] uniformly onto [0,B] without any looping.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Catch_rate_RNG_oversight
+; https://glitchcity.wiki/wiki/RNG_correlation_(Generation_I)
 
-.loop
+.loop ; entry point for capture calculation (no longer loops)
 	call Random
 	ld b, a
 
@@ -206,24 +216,37 @@ ItemUseBall:
 	cp MASTER_BALL
 	jp z, .captured
 
-; Anything will do for the basic Poké Ball.
+; Anything will do for the basic Poké Ball — no scaling needed, b ∈ [0,255].
 	cp POKE_BALL
 	jr z, .checkForAilments
 
-; If it's a Great/Ultra/Safari Ball and Rand1 is greater than 200, try again.
-	ld a, 200
-	cp b
-	jr c, .loop
-
-; Less than or equal to 200 is good enough for a Great Ball.
-	ld a, [hl]
+; For Great/Ultra/Safari Ball, scale the random value into the correct range.
 	cp GREAT_BALL
-	jr z, .checkForAilments
+	jr z, .greatBallScale
 
-; If it's an Ultra/Safari Ball and Rand1 is greater than 150, try again.
-	ld a, 150
-	cp b
-	jr c, .loop
+; Ultra/Safari Ball: Rand1 = Random * 151 / 256 → [0, 150]
+	ld a, 151
+	jr .scaleRand1
+
+.greatBallScale
+; Great Ball: Rand1 = Random * 201 / 256 → [0, 200]
+	ld a, 201
+
+.scaleRand1
+; Compute b = (b * a) >> 8 via the existing Multiply routine.
+; hMultiplicand (3 bytes, big-endian) = b, hMultiplier = scale factor
+	ld c, a ; save scale factor
+	xor a
+	ldh [hMultiplicand], a
+	ldh [hMultiplicand + 1], a
+	ld a, b
+	ldh [hMultiplicand + 2], a
+	ld a, c
+	ldh [hMultiplier], a
+	call Multiply
+; The 32-bit product's byte 2 (big-endian) is the high byte of the 16-bit result.
+	ldh a, [hProduct + 2]
+	ld b, a
 
 .checkForAilments
 ; Pokémon can be caught more easily with a status ailment.

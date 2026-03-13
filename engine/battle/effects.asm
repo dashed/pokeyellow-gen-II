@@ -34,11 +34,9 @@ SleepEffect:
 
 .sleepEffect
 	ld a, [bc]
-	bit NEEDS_TO_RECHARGE, a ; does the target need to recharge? (hyper beam)
-	res NEEDS_TO_RECHARGE, a ; target no longer needs to recharge
+	; fix: don't skip accuracy/status checks when target is recharging (Hyper Beam + Sleep move glitch)
+	res NEEDS_TO_RECHARGE, a ; clear recharge, but fall through to normal checks
 	ld [bc], a
-	jr nz, .setSleepCounter ; if the target had to recharge, all hit tests will be skipped
-	                        ; including the event where the target already has another status
 	ld a, [de]
 	ld b, a
 	and SLP_MASK

@@ -5243,8 +5243,14 @@ AttackSubstitute:
 	jr z, .nullifyEffect
 	ld hl, wEnemyMoveEffect ; value for enemy's turn
 .nullifyEffect
+; fix: don't nullify Explosion/Self-Destruct effect when substitute breaks.
+; Without this, the user survives and their sprite vanishes.
+	ld a, [hl]
+	cp EXPLODE_EFFECT
+	jr z, .dontNullify
 	xor a
 	ld [hl], a ; zero the effect of the attacker's move
+.dontNullify
 	jp DrawHUDsAndHPBars
 
 SubstituteTookDamageText:

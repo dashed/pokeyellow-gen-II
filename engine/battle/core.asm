@@ -369,9 +369,16 @@ MainInBattleLoop:
 	ld b, 0
 	add hl, bc
 	ld a, [hl]
-	cp METRONOME ; a MIRROR MOVE check is missing, might lead to a desync in link battles
-	             ; when combined with multi-turn moves
+	cp METRONOME
+; fix: also check for Mirror Move, not just Metronome. If Mirror Move copied
+; a trapping move and the enemy switches during its continuation, both
+; consoles must agree that the original move was Mirror Move (not the
+; trapping move itself), otherwise the games desynchronize.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Mirror_Move_glitch
+	jr z, .setSpecialMove
+	cp MIRROR_MOVE
 	jr nz, .specialMoveNotUsed
+.setSpecialMove
 	ld [wPlayerSelectedMove], a
 .specialMoveNotUsed
 	callfar SwitchEnemyMon

@@ -5368,6 +5368,18 @@ IncrementMovePP:
 	ld h, d
 	ld l, e
 	add hl, bc
+; Skip party PP increment if transformed (battle PP and party PP are
+; independent during Transform). Mirrors the check in DecrementPP.
+	push hl
+	ld hl, wPlayerBattleStatus3
+	ldh a, [hWhoseTurn]
+	and a
+	jr z, .checkTransformed
+	ld hl, wEnemyBattleStatus3
+.checkTransformed
+	bit TRANSFORMED, [hl]
+	pop hl
+	ret nz ; return if transformed — don't touch party PP
 	ldh a, [hWhoseTurn]
 	and a
 	ld a, [wPlayerMonNumber] ; value for player turn

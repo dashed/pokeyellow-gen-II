@@ -35,7 +35,26 @@ HealEffect_:
 .restEffect
 	ld a, [hl]
 	and a
+	push af    ; save Z flag (was the mon already statused before Rest?)
 	ld [hl], 2 ; clear status and set number of turns asleep to 2
+; Reset Toxic counter and BADLY_POISONED flag (prevents stale N value
+; from escalating subsequent poison/burn/Leech Seed damage after waking).
+	push hl
+	push de
+	ld hl, wPlayerBattleStatus3
+	ld de, wPlayerToxicCounter
+	ldh a, [hWhoseTurn]
+	and a
+	jr z, .resetToxicPlayer
+	ld hl, wEnemyBattleStatus3
+	ld de, wEnemyToxicCounter
+.resetToxicPlayer
+	res BADLY_POISONED, [hl]
+	xor a
+	ld [de], a
+	pop de
+	pop hl
+	pop af     ; restore Z flag from original status check
 	ld hl, StartedSleepingEffect ; if mon didn't have an status
 	jr z, .printRestText
 	ld hl, FellAsleepBecameHealthyText ; if mon had an status

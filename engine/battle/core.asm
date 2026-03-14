@@ -531,7 +531,7 @@ HandlePoisonBurnLeechSeed:
 	pop af
 	ldh [hWhoseTurn], a
 	pop hl
-	call HandlePoisonBurnLeechSeed_DecreaseOwnHP
+	call HandlePoisonBurnLeechSeed_DecreaseOwnHP_NoToxic
 	call HandlePoisonBurnLeechSeed_IncreaseEnemyHP
 	push hl
 	ld hl, HurtByLeechSeedText
@@ -560,12 +560,18 @@ HurtByLeechSeedText:
 	text_end
 
 ; decreases the mon's current HP by 1/16 of the Max HP (multiplied by number of toxic ticks if active)
-; note that the toxic ticks are considered even if the damage is not poison (hence the Leech Seed glitch)
 ; hl: HP pointer
 ; bc (out): total damage
+HandlePoisonBurnLeechSeed_DecreaseOwnHP_NoToxic:
+; Same as HandlePoisonBurnLeechSeed_DecreaseOwnHP but skips Toxic N multiplier.
+; Used for Leech Seed damage, which should always be flat maxHP/16.
+	ld a, 1            ; flag = skip Toxic
+	db $06             ; ld b, n — swallows the next byte (xor a = $AF → ld b, $AF)
 HandlePoisonBurnLeechSeed_DecreaseOwnHP:
+	xor a              ; flag = apply Toxic
 	push hl
 	push hl
+	push af            ; save skip-Toxic flag
 	ld bc, $e      ; skip to max HP
 	add hl, bc
 	ld a, [hli]    ; load max HP
@@ -585,6 +591,9 @@ HandlePoisonBurnLeechSeed_DecreaseOwnHP:
 	jr nz, .nonZeroDamage
 	inc c         ; damage is at least 1
 .nonZeroDamage
+	pop af             ; recover skip-Toxic flag
+	and a
+	jr nz, .noToxic    ; flag set → Leech Seed path, skip Toxic multiplier
 	ld hl, wPlayerBattleStatus3
 	ld de, wPlayerToxicCounter
 	ldh a, [hWhoseTurn]

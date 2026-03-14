@@ -4932,6 +4932,12 @@ ApplyAttackToEnemyPokemon:
 	srl a
 	add b
 	ld b, a ; b = level * 1.5
+; fix: clamp b to minimum 2 so the range [1, b) is non-empty.
+; Without this, levels 0, 1, or 171 (byte overflow) cause an infinite loop.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Psywave_infinite_loop
+	cp 2
+	jr nc, .loop
+	ld b, 2
 ; loop until a random number in the range [1, b) is found
 .loop
 	call BattleRandom
@@ -5051,6 +5057,12 @@ ApplyAttackToPlayerPokemon:
 	srl a
 	add b
 	ld b, a ; b = attacker's level * 1.5
+; fix: clamp b to minimum 2 so the range [1, b) is non-empty.
+; Without this, levels 0, 1, or 171 (byte overflow) cause an infinite loop.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Psywave_infinite_loop
+	cp 2
+	jr nc, .loop
+	ld b, 2
 ; fix: reject 0 damage to match the player's Psywave [1, b) range
 ; (without this, 0 damage on one side but not the other desyncs link battles)
 .loop

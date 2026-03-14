@@ -3335,7 +3335,12 @@ ExecutePlayerMove:
 	ld a, [wPlayerSelectedMove]
 	ASSERT CANNOT_MOVE == $ff
 	inc a
-	jp z, ExecutePlayerMoveDone ; if the player cannot move, skip most of their turn
+	jr nz, .canMove
+; Player cannot move (trapped). Still process status conditions so
+; sleep/freeze counters decrement (fixes Trapping sleep glitch).
+	call CheckPlayerStatusConditions
+	jp ExecutePlayerMoveDone
+.canMove
 	xor a
 	ld [wMoveMissed], a
 	ld [wMonIsDisobedient], a
@@ -5818,7 +5823,12 @@ ExecuteEnemyMove:
 	ld a, [wEnemySelectedMove]
 	ASSERT CANNOT_MOVE == $ff
 	inc a
-	jp z, ExecuteEnemyMoveDone
+	jr nz, .canMove
+; Enemy cannot move (trapped). Still process status conditions so
+; sleep/freeze counters decrement (mirrors player-side fix).
+	call CheckEnemyStatusConditions
+	jp ExecuteEnemyMoveDone
+.canMove
 	call PrintGhostText
 	jp z, ExecuteEnemyMoveDone
 	ld a, [wLinkState]

@@ -2013,9 +2013,18 @@ DrawPlayerHUDAndHPBar:
 	xor a
 	ld [wChannelSoundIDs + CHAN5], a
 	ret
+; fix: play the low health alarm for only 4 beep cycles (≈2 seconds) instead
+; of continuously. This prevents the alarm from overriding battle move sounds
+; and animations due to the Game Boy's limited audio channels.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Red_bar_glitch
 .setLowHealthAlarm
 	ld hl, wLowHealthAlarm
+	bit BIT_LOW_HEALTH_ALARM, [hl]
+	jr nz, .alarmAlreadyOn ; don't reset counter if alarm is already active
 	set BIT_LOW_HEALTH_ALARM, [hl]
+	ld a, 4
+	ld [wLowHealthAlarmCounter], a
+.alarmAlreadyOn
 	ret
 
 DrawEnemyHUDAndHPBar:

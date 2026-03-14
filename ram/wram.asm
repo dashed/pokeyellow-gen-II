@@ -649,7 +649,11 @@ wLowHealthAlarmDisabled:: db
 
 wPlayerMonMinimized:: db
 
-	ds 2
+; number of beep cycles remaining before the low health alarm auto-disables;
+; set to 4 when alarm activates, decremented each cycle by Music_DoLowHealthAlarm
+wLowHealthAlarmCounter:: db
+
+	ds 1
 
 wEXPBarPixelLength::  ds 1
 wEXPBarBaseEXP::      ds 3

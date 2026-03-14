@@ -96,8 +96,29 @@ fn write_mon_moves_bounds_check() {
 
 #[test]
 fn get_current_move_bounds_check() {
+    // GetCurrentMove uses a unified clamp for both name lookup and Moves table:
+    //   cp NUM_ATTACKS + 1  ($FE $A6)
+    //   jr c, .validMoveId  ($38 nn)
+    //   ld a, STRUGGLE      ($3E $A5)
+    // This differs from the other 6 sites which use cp $A5 / xor a.
     let mut h = TestHarness::new_headless();
-    assert_bounds_check(&mut h, "GetCurrentMove.validMoveId");
+    let bank = sym_bank("GetCurrentMove.validMoveId");
+    h.select_rom_bank(bank);
+    let valid = sym_addr("GetCurrentMove.validMoveId");
+    let cp_addr = valid - 6;
+    assert_eq!(rom(&mut h, cp_addr), CP_N, "expected `cp` opcode");
+    assert_eq!(
+        rom(&mut h, cp_addr + 1),
+        NUM_ATTACKS + 1,
+        "cp immediate should be NUM_ATTACKS+1 ($A6)"
+    );
+    assert_eq!(rom(&mut h, cp_addr + 2), JR_C, "expected `jr c`");
+    assert_eq!(rom(&mut h, cp_addr + 4), 0x3E, "expected `ld a, n` opcode");
+    assert_eq!(
+        rom(&mut h, cp_addr + 5),
+        NUM_ATTACKS,
+        "ld a immediate should be STRUGGLE ($A5)"
+    );
 }
 
 #[test]

@@ -5689,6 +5689,11 @@ EnemyCanExecuteChargingMove:
 	res CHARGING_UP, [hl] ; no longer charging up for attack
 	res INVULNERABLE, [hl] ; no longer invulnerable to typical attacks
 	ld a, [wEnemyMoveNum]
+; Clamp glitch move IDs to prevent Super Glitch name overflow.
+	cp NUM_ATTACKS + 1
+	jr c, .validMoveId
+	ld a, STRUGGLE
+.validMoveId
 	ld [wNameListIndex], a
 	ld a, BANK(MoveNames)
 	ld [wPredefBank], a
@@ -6163,13 +6168,13 @@ GetCurrentMove:
 	jr nz, .selected
 	ld a, [wPlayerSelectedMove]
 .selected
+; Clamp glitch move index for both name lookup and Moves table read.
+	cp NUM_ATTACKS + 1
+	jr c, .validMoveId
+	ld a, STRUGGLE
+.validMoveId
 	ld [wNameListIndex], a
 	dec a
-; Clamp glitch move index to prevent out-of-bounds Moves table read.
-	cp NUM_ATTACKS
-	jr c, .validMoveId
-	xor a
-.validMoveId
 	ld hl, Moves
 	ld bc, MOVE_LENGTH
 	call AddNTimes

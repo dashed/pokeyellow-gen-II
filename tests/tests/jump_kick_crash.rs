@@ -186,16 +186,20 @@ fn crash_handler_has_min_clamp_to_1() {
 
 #[test]
 fn crash_handler_calls_apply_damage() {
-    // After .applyRecoil, the code should call ApplyDamageToPlayerPokemon
-    // or ApplyDamageToEnemyPokemon based on hWhoseTurn.
+    // After .applyRecoil, the code should call ApplyDamageToPlayerPokemonDirect
+    // or ApplyDamageToEnemyPokemonDirect (bypasses Substitute check for self-damage).
     let mut h = TestHarness::new_headless();
     h.select_rom_bank(sym_bank("PrintMoveFailureText"));
-    let _recoil = sym_addr("PrintMoveFailureText.applyRecoil");
     let enemy = sym_addr("PrintMoveFailureText.enemyTurn");
-    // .enemyTurn should exist and contain a jp instruction
+    // .enemyTurn: ld hl, wDamage + 1 ($21) / jp ApplyDamageToEnemyPokemonDirect ($C3)
     assert_eq!(
         rom(&mut h, enemy),
+        0x21,
+        ".enemyTurn should start with ld hl, nn (wDamage + 1)"
+    );
+    assert_eq!(
+        rom(&mut h, enemy + 3),
         0xC3,
-        ".enemyTurn should be jp ApplyDamageToEnemyPokemon"
+        ".enemyTurn should have jp ApplyDamageToEnemyPokemonDirect"
     );
 }

@@ -3980,7 +3980,8 @@ HandleSelfConfusionDamage:
 	call DrawPlayerHUDAndHPBar
 	xor a
 	ldh [hWhoseTurn], a
-	jp ApplyDamageToPlayerPokemon
+	ld hl, wDamage + 1
+	jp ApplyDamageToPlayerPokemonDirect
 
 INCLUDE "engine/battle/used_move_text.asm"
 
@@ -4037,9 +4038,11 @@ PrintMoveFailureText:
 	ldh a, [hWhoseTurn]
 	and a
 	jr nz, .enemyTurn
-	jp ApplyDamageToPlayerPokemon
+	ld hl, wDamage + 1
+	jp ApplyDamageToPlayerPokemonDirect
 .enemyTurn
-	jp ApplyDamageToEnemyPokemon
+	ld hl, wDamage + 1
+	jp ApplyDamageToEnemyPokemonDirect
 
 AttackMissedText:
 	text_far _AttackMissedText
@@ -4972,6 +4975,7 @@ ApplyDamageToEnemyPokemon:
 	ld a, [wEnemyBattleStatus2]
 	bit HAS_SUBSTITUTE_UP, a ; does the enemy have a substitute?
 	jp nz, AttackSubstitute
+ApplyDamageToEnemyPokemonDirect:
 ; subtract the damage from the pokemon's current HP
 ; also, save the current HP at wHPBarOldHP
 	ld a, [hld]
@@ -5098,6 +5102,7 @@ ApplyDamageToPlayerPokemon:
 	ld a, [wPlayerBattleStatus2]
 	bit HAS_SUBSTITUTE_UP, a ; does the player have a substitute?
 	jp nz, AttackSubstitute
+ApplyDamageToPlayerPokemonDirect:
 ; subtract the damage from the pokemon's current HP
 ; also, save the current HP at wHPBarOldHP and the new HP at wHPBarNewHP
 	ld a, [hld]
@@ -6149,7 +6154,8 @@ CheckEnemyStatusConditions:
 	call PlayMoveAnimation
 	ld a, $1
 	ldh [hWhoseTurn], a
-	call ApplyDamageToEnemyPokemon
+	ld hl, wDamage + 1
+	call ApplyDamageToEnemyPokemonDirect
 	jr .monHurtItselfOrFullyParalysed
 .checkIfTriedToUseDisabledMove
 ; prevents a disabled move that was selected before being disabled from being used

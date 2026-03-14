@@ -533,17 +533,16 @@ UpdateStatDone:
 	ld b, BANK(ReshowSubstituteAnim)
 	pop af
 	call nz, Bankswitch
+; fix: removed three erroneous calls that caused stat modification errors:
+; 1) ApplyBadgeStatBoosts re-applied badge boosts to ALL stats (stacking 1.125x)
+; 2) QuarterSpeedDueToParalysis applied to the wrong mon (opponent, not self)
+; 3) HalveAttackDueToBurn applied to the wrong mon (opponent, not self)
+; The individual stat was already correctly recalculated at .recalculateStat.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Stat_modification_errors
 .applyBadgeBoostsAndStatusPenalties
-	ldh a, [hWhoseTurn]
-	and a
-	call z, ApplyBadgeStatBoosts ; whenever the player uses a stat-up move, badge boosts get reapplied again to every stat,
-	                             ; even to those not affected by the stat-up move (will be boosted further)
 	ld hl, MonsStatsRoseText
 	call PrintText
-
-; these shouldn't be here
-	call QuarterSpeedDueToParalysis ; apply speed penalty to the player whose turn is not, if it's paralyzed
-	jp HalveAttackDueToBurn ; apply attack penalty to the player whose turn is not, if it's burned
+	ret
 
 RestoreOriginalStatModifier:
 	pop hl
@@ -723,19 +722,15 @@ UpdateLoweredStatDone:
 	cp ATTACK_DOWN_SIDE_EFFECT ; for all side effects, move animation has already played, skip it
 	jr nc, .ApplyBadgeBoostsAndStatusPenalties
 	call PlayCurrentMoveAnimation2
+; fix: removed three erroneous calls (same as StatModifierUpEffect above):
+; 1) ApplyBadgeStatBoosts re-applied badge boosts to ALL stats (stacking)
+; 2) QuarterSpeedDueToParalysis applied to the wrong mon
+; 3) HalveAttackDueToBurn applied to the wrong mon
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Stat_modification_errors
 .ApplyBadgeBoostsAndStatusPenalties
-	ldh a, [hWhoseTurn]
-	and a
-	call nz, ApplyBadgeStatBoosts ; whenever the opponent uses a stat-down move, badge boosts get reapplied again to every stat,
-	                              ; even to those not affected by the stat-down move (will be boosted further)
 	ld hl, MonsStatsFellText
 	call PrintText
-
-; These where probably added given that a stat-down move affecting speed or attack will override
-; the stat penalties from paralysis and burn respectively.
-; But they are always called regardless of the stat affected by the stat-down move.
-	call QuarterSpeedDueToParalysis
-	jp HalveAttackDueToBurn
+	ret
 
 CantLowerAnymore_Pop:
 	pop de

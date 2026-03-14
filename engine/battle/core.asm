@@ -1545,7 +1545,17 @@ EnemySendOutFirstMon:
 	hlcoord 15, 6
 	predef AnimateSendingOutMon
 	ld a, [wEnemyMonSpecies2]
+; Pikachu cry fix: in link battles (and trainer battles), the enemy
+; Pikachu always played the electronic cry instead of the voice cry.
+; Check if the enemy species is Pikachu and play the voice if so.
+	cp PIKACHU
+	jr nz, .notEnemyPikachu
+	ldpikacry e, PikachuCry11
+	callfar PlayPikachuSoundClip
+	jr .afterEnemyCry
+.notEnemyPikachu
 	call PlayCry
+.afterEnemyCry
 	call DrawEnemyHUDAndHPBar
 	ld a, [wCurrentMenuItem]
 	and a

@@ -492,6 +492,13 @@ HandlePoisonBurnLeechSeed:
 	ld hl, wEnemyMonHP
 	ld de, wEnemyMonStatus
 .playersTurn
+; Poison/Burn 0 HP fix: if HP is already 0 (from confusion self-damage
+; or recoil), skip all residual damage and animation.  Without this
+; check, the poison/burn text and flash animation play on a 0 HP mon.
+	ld a, [hli]
+	or [hl]
+	dec hl
+	jr z, .notLeechSeeded ; HP = 0 → skip to faint path
 	ld a, [de]
 	and (1 << BRN) | (1 << PSN)
 	jr z, .notBurnedOrPoisoned

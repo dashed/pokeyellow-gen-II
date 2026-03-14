@@ -529,6 +529,17 @@ UpdateStatDone:
 	pop bc
 	ld a, $1
 	ld [bc], a
+; Link battle animation oversight fix: when animations are disabled,
+; PlayCurrentMoveAnimation skips the Minimize animation, leaving the
+; full-size sprite despite the MINIMIZED flag being set.  Apply the
+; visual effect now so the sprite matches the flag.  (Gen II fix.)
+	ld a, [wOptions]
+	bit BIT_BATTLE_ANIMATION, a
+	jr z, .minimizeAnimPlayed ; animations ON → visual already applied
+	ld hl, AnimationMinimizeMon
+	ld b, BANK(AnimationMinimizeMon)
+	call Bankswitch
+.minimizeAnimPlayed
 	ld hl, ReshowSubstituteAnim
 	ld b, BANK(ReshowSubstituteAnim)
 	pop af

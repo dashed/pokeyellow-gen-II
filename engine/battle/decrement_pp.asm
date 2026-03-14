@@ -39,5 +39,8 @@ DecrementPP:
 	ld b, 0
 	add hl, bc           ; calculate the address in memory of the PP we need to decrement
 	                     ; based on the move chosen.
+	ld a, [hl]
+	and PP_MASK          ; mask off PP Up bits to get actual PP
+	ret z                ; if actual PP is 0, don't decrement (prevents underflow)
 	dec [hl]             ; Decrement PP
 	ret

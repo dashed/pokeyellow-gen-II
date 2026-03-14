@@ -61,7 +61,10 @@ fn pikachu_species_check_before_cry() {
             break;
         }
     }
-    assert!(found, "`cp PIKACHU` not found between .next4 and .notEnemyPikachu");
+    assert!(
+        found,
+        "`cp PIKACHU` not found between .next4 and .notEnemyPikachu"
+    );
 }
 
 #[test]

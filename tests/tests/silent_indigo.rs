@@ -88,11 +88,7 @@ fn victory_replay_check_present() {
             // and a should follow
             assert_eq!(rom(&mut h, addr + 3), AND_A, "Expected `and a` after ld a");
             // jr z should follow
-            assert_eq!(
-                rom(&mut h, addr + 4),
-                JR_Z,
-                "Expected `jr z` after and a"
-            );
+            assert_eq!(rom(&mut h, addr + 4), JR_Z, "Expected `jr z` after and a");
         }
     }
 
@@ -123,10 +119,7 @@ fn stop_all_music_called_before_replay() {
             break;
         }
     }
-    assert!(
-        found,
-        "call StopAllMusic not found in victory replay code"
-    );
+    assert!(found, "call StopAllMusic not found in victory replay code");
 }
 
 #[test]

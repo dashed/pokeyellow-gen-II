@@ -100,10 +100,7 @@ fn bankswitch_call_for_animation_minimize_mon() {
             break;
         }
     }
-    assert!(
-        found,
-        "call Bankswitch (AnimationMinimizeMon) not found"
-    );
+    assert!(found, "call Bankswitch (AnimationMinimizeMon) not found");
 }
 
 #[test]
@@ -123,10 +120,7 @@ fn ld_hl_animation_minimize_mon_present() {
             break;
         }
     }
-    assert!(
-        found,
-        "ld hl, AnimationMinimizeMon not found"
-    );
+    assert!(found, "ld hl, AnimationMinimizeMon not found");
 }
 
 #[test]

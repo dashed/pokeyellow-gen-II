@@ -3123,7 +3123,7 @@ PrintMenuItem:
 	hlcoord 1, 10
 	ld de, DisabledText
 	call PlaceString
-	jr .moveDisabled
+	jp .moveDisabled
 .notDisabled
 	ld hl, wCurrentMenuItem
 	dec [hl]
@@ -3139,7 +3139,23 @@ PrintMenuItem:
 	                            ; isn't actually selected (just pointed to by the cursor)
 	ld a, [wPlayerMonNumber]
 	ld [wWhichPokemon], a
+; Mimic PP glitch fix: when Mimic copies a move, the fight menu shows
+; the copied move's max PP instead of Mimic's.  Check the party data
+; to see if this slot originally had Mimic; if so, use party data for
+; GetMaxPP so it looks up Mimic's base PP (10) instead of the copy's.
+	ld hl, wPartyMon1Moves
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes ; a still has wPlayerMonNumber
+	ld a, [wCurrentMenuItem]
+	ld c, a
+	ld b, 0
+	add hl, bc
+	ld a, [hl]
+	cp MIMIC
 	ld a, BATTLE_MON_DATA
+	jr nz, .gotMaxPPSource
+	ld a, PLAYER_PARTY_DATA
+.gotMaxPPSource
 	ld [wMonDataLocation], a
 	callfar GetMaxPP
 	ld hl, wCurrentMenuItem

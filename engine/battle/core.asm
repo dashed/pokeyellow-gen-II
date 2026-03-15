@@ -1892,7 +1892,13 @@ SendOutMon:
 	ld hl, wEnemyBattleStatus1
 	res USING_TRAPPING_MOVE, [hl]
 	callfar IsThisPartyMonStarterPikachu
-	jr c, .starterPikachu
+	jr nc, .notStarterPikachu
+; fix: in the first rival battle, Pikachu is still in its Poké Ball
+; (overworld sprite disabled). Use the normal Poké Ball animation.
+	ld a, [wPikachuOverworldStateFlags]
+	bit 3, a ; bit 3 = sprite drawing disabled (still in ball)
+	jr z, .starterPikachu
+.notStarterPikachu
 	ld a, $1
 	ldh [hWhoseTurn], a
 	ld a, POOF_ANIM

@@ -13,7 +13,10 @@ pub use golden::{compare_screenshot, golden_dir, save_screenshot, should_generat
 pub use harness::TestHarness;
 pub use input::InputScript;
 pub use link::LinkEndpoint;
-pub use rom::{load_rom_bytes, rom_path, sym_path};
+pub use rom::{
+    check_rom_staleness, compute_global_checksum, compute_header_checksum, load_rom_bytes,
+    rom_path, set_memory_limit, sym_path, validate_rom, validate_sym_file,
+};
 pub use symbols::SymbolTable;
 
 use std::sync::OnceLock;

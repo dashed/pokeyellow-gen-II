@@ -2,6 +2,7 @@ use boytacean::gb::{GameBoy, GameBoyMode};
 use boytacean::pad::PadKey;
 use boytacean::state::{SaveStateFormat, StateManager};
 
+use crate::rom::{check_rom_staleness, set_memory_limit, validate_rom, validate_sym_file};
 use crate::{rom_path, sym_path, SymbolTable};
 
 /// Maximum number of CPU instructions to execute before giving up in `step_to`.
@@ -46,8 +47,35 @@ impl TestHarness {
     /// state (PC = $0100).
     pub fn new() -> Self {
         let rom_path = rom_path();
-        let rom_data = std::fs::read(&rom_path)
-            .unwrap_or_else(|e| panic!("Failed to read ROM file {}: {}", rom_path.display(), e));
+        let rom_data = std::fs::read(&rom_path).unwrap_or_else(|e| {
+            panic!(
+                "\n\n\
+                 ╔══════════════════════════════════════════════════════════╗\n\
+                 ║  ROM FILE NOT FOUND                                     ║\n\
+                 ╠══════════════════════════════════════════════════════════╣\n\
+                 ║  Could not read: {}\n\
+                 ║  Error: {}\n\
+                 ║                                                         ║\n\
+                 ║  Build the ROM first:  make pokeyellow.gbc              ║\n\
+                 ╚══════════════════════════════════════════════════════════╝\n",
+                rom_path.display(),
+                e
+            )
+        });
+
+        // Safety net: cap virtual memory to prevent runaway emulation
+        // from consuming all system memory if validation somehow misses
+        // a problem.
+        set_memory_limit();
+
+        // Validate ROM BEFORE loading into the emulator.
+        // Without this, invalid ROM data causes runaway memory usage.
+        validate_rom(&rom_data);
+        validate_sym_file();
+
+        // Warn (don't fail) if ROM is older than source files.
+        check_rom_staleness();
+
         let sym = SymbolTable::load(sym_path().to_str().unwrap());
 
         let mut gb = GameBoy::new(Some(GameBoyMode::Dmg));

@@ -49,17 +49,29 @@ fn repel_check_loads_repel_steps_first() {
     let repel_check = not_on_door + 10;
 
     // ld a, [wRepelRemainingSteps] ($FA)
-    assert_eq!(at(&rom, bank, repel_check), 0xFA, "Expected ld a,[nn] for wRepelRemainingSteps");
+    assert_eq!(
+        at(&rom, bank, repel_check),
+        0xFA,
+        "Expected ld a,[nn] for wRepelRemainingSteps"
+    );
     let lo = at(&rom, bank, repel_check + 1);
     let hi = at(&rom, bank, repel_check + 2);
     let addr = u16::from_le_bytes([lo, hi]);
-    assert_eq!(addr, sym_addr("wRepelRemainingSteps"), "Should load wRepelRemainingSteps");
+    assert_eq!(
+        addr,
+        sym_addr("wRepelRemainingSteps"),
+        "Should load wRepelRemainingSteps"
+    );
 
     // and a ($A7)
     assert_eq!(at(&rom, bank, repel_check + 3), 0xA7, "Expected and a");
 
     // jr z, .next ($28)
-    assert_eq!(at(&rom, bank, repel_check + 4), 0x28, "Expected jr z to .next");
+    assert_eq!(
+        at(&rom, bank, repel_check + 4),
+        0x28,
+        "Expected jr z to .next"
+    );
 }
 
 #[test]
@@ -73,18 +85,34 @@ fn turning_check_reads_misc_flags_and_bit_turning() {
     let turning_check = not_on_door + 16;
 
     // ld a, [wMiscFlags] ($FA)
-    assert_eq!(at(&rom, bank, turning_check), 0xFA, "Expected ld a,[nn] for wMiscFlags");
+    assert_eq!(
+        at(&rom, bank, turning_check),
+        0xFA,
+        "Expected ld a,[nn] for wMiscFlags"
+    );
     let lo = at(&rom, bank, turning_check + 1);
     let hi = at(&rom, bank, turning_check + 2);
     let addr = u16::from_le_bytes([lo, hi]);
     assert_eq!(addr, sym_addr("wMiscFlags"), "Should load wMiscFlags");
 
     // bit BIT_TURNING, a = CB 57 (bit 2, a)
-    assert_eq!(at(&rom, bank, turning_check + 3), 0xCB, "Expected CB prefix");
-    assert_eq!(at(&rom, bank, turning_check + 4), 0x57, "Expected bit 2, a (BIT_TURNING)");
+    assert_eq!(
+        at(&rom, bank, turning_check + 3),
+        0xCB,
+        "Expected CB prefix"
+    );
+    assert_eq!(
+        at(&rom, bank, turning_check + 4),
+        0x57,
+        "Expected bit 2, a (BIT_TURNING)"
+    );
 
     // jr nz, .next ($20)
-    assert_eq!(at(&rom, bank, turning_check + 5), 0x20, "Expected jr nz to skip decrement");
+    assert_eq!(
+        at(&rom, bank, turning_check + 5),
+        0x20,
+        "Expected jr nz to skip decrement"
+    );
 }
 
 #[test]
@@ -119,7 +147,11 @@ fn normal_path_reloads_and_decrements_repel_steps() {
     let lo = at(&rom, bank, dec_path + 1);
     let hi = at(&rom, bank, dec_path + 2);
     let addr = u16::from_le_bytes([lo, hi]);
-    assert_eq!(addr, sym_addr("wRepelRemainingSteps"), "Reload wRepelRemainingSteps");
+    assert_eq!(
+        addr,
+        sym_addr("wRepelRemainingSteps"),
+        "Reload wRepelRemainingSteps"
+    );
 
     // dec a ($3D)
     assert_eq!(at(&rom, bank, dec_path + 3), 0x3D, "Expected dec a");

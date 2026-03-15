@@ -53,10 +53,18 @@ fn give_poke_balls_uses_check_event_not_check_and_set() {
     // Total: 5 bytes
 
     // Verify ld a, [nn] ($FA) for CheckEvent
-    assert_eq!(at(&rom, bank, base), 0xFA, "Expected ld a,[nn] ($FA) for CheckEvent");
+    assert_eq!(
+        at(&rom, bank, base),
+        0xFA,
+        "Expected ld a,[nn] ($FA) for CheckEvent"
+    );
 
     // Verify CB prefix for bit at +3
-    assert_eq!(at(&rom, bank, base + 3), 0xCB, "Expected CB prefix for bit at +3");
+    assert_eq!(
+        at(&rom, bank, base + 3),
+        0xCB,
+        "Expected CB prefix for bit at +3"
+    );
 
     // At +5, should be jr nz ($20) to .come_see_me_sometimes
     // If CheckAndSetEvent were used, bytes +5/+6 would be set B,[hl] ($CB $XX)
@@ -96,13 +104,29 @@ fn give_item_with_poke_ball_x5() {
 
     // After CheckEvent (5) + jr nz (2) = offset +7
     // lb bc, POKE_BALL, 5 → ld bc, nn ($01 lo hi) where lo=5 (C), hi=POKE_BALL (B)
-    assert_eq!(at(&rom, bank, base + 7), 0x01, "Expected ld bc,nn ($01) for lb bc");
+    assert_eq!(
+        at(&rom, bank, base + 7),
+        0x01,
+        "Expected ld bc,nn ($01) for lb bc"
+    );
     // Little-endian: lo byte = C = quantity, hi byte = B = item
-    assert_eq!(at(&rom, bank, base + 8), 0x05, "Expected quantity 5 (C register, lo byte)");
-    assert_eq!(at(&rom, bank, base + 9), 0x04, "Expected POKE_BALL ($04, B register, hi byte)");
+    assert_eq!(
+        at(&rom, bank, base + 8),
+        0x05,
+        "Expected quantity 5 (C register, lo byte)"
+    );
+    assert_eq!(
+        at(&rom, bank, base + 9),
+        0x04,
+        "Expected POKE_BALL ($04, B register, hi byte)"
+    );
 
     // call GiveItem at +10
-    assert_eq!(at(&rom, bank, base + 10), 0xCD, "Expected call ($CD) for GiveItem");
+    assert_eq!(
+        at(&rom, bank, base + 10),
+        0xCD,
+        "Expected call ($CD) for GiveItem"
+    );
     let call_lo = at(&rom, bank, base + 11);
     let call_hi = at(&rom, bank, base + 12);
     let call_addr = u16::from_le_bytes([call_lo, call_hi]);

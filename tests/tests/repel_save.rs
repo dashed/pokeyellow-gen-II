@@ -73,21 +73,24 @@ fn save_main_data_writes_repel_steps() {
             found_load = true;
             // Next should be ld [sRepelRemainingSteps], a = $EA lo hi
             let next = at(&rom, bank, addr + 3);
-            assert_eq!(next, 0xEA, "Expected ld [nn],a ($EA) after loading wRepelRemainingSteps");
+            assert_eq!(
+                next, 0xEA,
+                "Expected ld [nn],a ($EA) after loading wRepelRemainingSteps"
+            );
             let s_repel = sym_addr("sRepelRemainingSteps");
             let s_lo = at(&rom, bank, addr + 4);
             let s_hi = at(&rom, bank, addr + 5);
             let s_addr = u16::from_le_bytes([s_lo, s_hi]);
-            assert_eq!(
-                s_addr, s_repel,
-                "Should store to sRepelRemainingSteps"
-            );
+            assert_eq!(s_addr, s_repel, "Should store to sRepelRemainingSteps");
             found_store = true;
             break;
         }
     }
     assert!(found_load, "SaveMainData should load wRepelRemainingSteps");
-    assert!(found_store, "SaveMainData should store to sRepelRemainingSteps");
+    assert!(
+        found_store,
+        "SaveMainData should store to sRepelRemainingSteps"
+    );
 }
 
 // ─── Load routine tests ─────────────────────────────────────────────

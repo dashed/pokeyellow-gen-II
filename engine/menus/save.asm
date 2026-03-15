@@ -62,6 +62,13 @@ LoadMainData:
 	ld de, wMainDataStart
 	ld bc, wMainDataEnd - wMainDataStart
 	call CopyData
+; fix: zero wPlayerMovingDirection after loading main data (Save Surf exploit).
+; The main data block persists wPlayerMovingDirection from the save. If the
+; player saved while holding a D-Pad direction, UpdatePlayerSprite in EnterMap
+; reads this stale value and sets wSpritePlayerStateData1FacingDirection to
+; match — making GetTileAndCoordsInFrontOfPlayer check the wrong tile for Surf.
+	xor a
+	ld [wPlayerMovingDirection], a
 	ld hl, wCurMapTileset
 	set BIT_NO_PREVIOUS_MAP, [hl]
 	ld hl, sSpriteData

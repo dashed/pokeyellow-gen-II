@@ -1164,8 +1164,16 @@ ClearPikachuFollowCommandBuffer:
 
 AppendPikachuFollowCommandToBuffer:
 	ld hl, wPikachuFollowCommandBufferSize
-	inc [hl]
 	ld e, [hl]
+	inc e
+; fix: cap buffer at 16 entries to prevent off-screen memory corruption.
+; Without this check, each step while Pikachu is off-screen (e.g. staying
+; at Jigglypuff/Bill/Clefairy events) writes past the 16-byte buffer into
+; wExpressionNumber, wPikachuMovementFlags, trainer data, and sign arrays.
+; https://glitchcity.wiki/wiki/Pikachu_off-screen_glitch
+	bit 4, e
+	ret nz ; buffer full (index >= 16), discard command
+	ld [hl], e
 	ld d, 0
 	ld hl, wPikachuFollowCommandBuffer
 	add hl, de

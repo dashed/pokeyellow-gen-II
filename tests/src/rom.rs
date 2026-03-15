@@ -32,7 +32,7 @@ const MIN_ROM_SIZE: usize = 32 * 1024;
 /// Memory limit for test processes (2 GiB). Prevents runaway emulator
 /// execution from consuming all system memory.
 #[cfg(unix)]
-const MEMORY_LIMIT_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+const MEMORY_LIMIT_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 
 // ─── ROM validation ──────────────────────────────────────────────────
 
@@ -282,7 +282,7 @@ fn visit_asm_files(dir: &Path, f: &mut impl FnMut(&Path, std::time::SystemTime))
 /// Set a virtual memory limit for the current process.
 ///
 /// On Unix systems, uses `setrlimit(RLIMIT_AS, ...)` to cap the process's
-/// virtual address space at 2 GiB. If the emulator goes haywire with invalid
+/// virtual address space at 4 GiB. If the emulator goes haywire with invalid
 /// ROM data, allocations will fail with OOM instead of consuming all system
 /// memory and triggering the OS OOM killer / SIGKILL.
 ///

@@ -526,7 +526,8 @@ DEF ANY_FACING EQU $d0
 	hidden_event 10, 16, HiddenCoins, COIN+10
 	hidden_event 11,  7, HiddenCoins, COIN+40
 	hidden_event 15,  8, HiddenCoins, COIN+100
-	hidden_event 12, 15, HiddenCoins, COIN+10
+; fix: removed hidden_event 12, 15, HiddenCoins, COIN+10 — tile is a slot
+; machine used by an NPC; the hidden coins were never obtainable.
 	db -1 ; end
 
 	hidden_events_for FUCHSIA_POKECENTER

@@ -1706,9 +1706,18 @@ ItemUseRepelCommon:
 	ld a, [wIsInBattle]
 	and a
 	jp nz, ItemUseNotTime
+; fix: prevent overriding an active repel effect (matches Gen II behavior).
+; Without this, using a weaker repel while a stronger one is active wastes
+; the remaining steps by unconditionally overwriting wRepelRemainingSteps.
+	ld a, [wRepelRemainingSteps]
+	and a
+	jr nz, .alreadyActive
 	ld a, b
 	ld [wRepelRemainingSteps], a
 	jp PrintItemUseTextAndRemoveItem
+.alreadyActive
+	ld hl, RepelAlreadyActiveText
+	jp ItemUseFailed
 
 ; handles X Accuracy item
 ItemUseXAccuracy:
@@ -2634,6 +2643,10 @@ ItemUseNotYoursToUseText:
 
 ItemUseNoEffectText:
 	text_far _ItemUseNoEffectText
+	text_end
+
+RepelAlreadyActiveText:
+	text_far _RepelAlreadyActiveText
 	text_end
 
 ThrowBallAtTrainerMonText1:

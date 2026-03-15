@@ -86,24 +86,36 @@ fn check_accuracy(h: &mut TestHarness, accuracy: u8, random: u8) -> bool {
 
 /// Run accuracy checks in parallel over the given values.
 ///
-/// Each value gets its own thread with a fresh harness+state.
+/// Uses chunked parallelism (one thread per CPU core) to avoid spawning
+/// hundreds of threads — CI runners have low thread limits and concurrent
+/// workflow runs can exhaust them.
 /// `test_fn` receives (value, harness, state) and returns `Some(error_msg)` on failure.
 fn run_parallel<F>(values: &[u8], test_fn: F)
 where
     F: Fn(u8, &mut TestHarness, &[u8]) -> Option<String> + Sync,
 {
+    let n_threads = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1);
     let test_fn = &test_fn;
     let results: Vec<Option<String>> = std::thread::scope(|s| {
         let handles: Vec<_> = values
-            .iter()
-            .map(|&val| {
+            .chunks(values.len().div_ceil(n_threads))
+            .map(|chunk| {
                 s.spawn(move || {
                     let (mut h, state) = setup_accuracy_fixture();
-                    test_fn(val, &mut h, &state)
+                    chunk
+                        .iter()
+                        .filter_map(|&val| test_fn(val, &mut h, &state))
+                        .collect::<Vec<_>>()
                 })
             })
             .collect();
-        handles.into_iter().map(|h| h.join().unwrap()).collect()
+        handles
+            .into_iter()
+            .flat_map(|h| h.join().unwrap())
+            .map(Some)
+            .collect()
     });
 
     let failures: Vec<&str> = results.iter().filter_map(|r| r.as_deref()).collect();

@@ -20,6 +20,7 @@ sSpriteData::  ds wSpriteDataEnd - wSpriteDataStart
 sPartyData::   ds wPartyDataEnd - wPartyDataStart
 sCurBoxData::  ds wBoxDataEnd - wBoxDataStart
 sTileAnimations:: db
+sRepelRemainingSteps:: db
 sGameDataEnd::
 sMainDataCheckSum:: db
 

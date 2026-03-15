@@ -70,6 +70,9 @@ LoadMainData:
 	call CopyData
 	ld a, [sTileAnimations]
 	ldh [hTileAnimations], a
+; fix: load repel steps remaining (Repel saving oversight).
+	ld a, [sRepelRemainingSteps]
+	ld [wRepelRemainingSteps], a
 
 ; this part is redundant, LoadCurrentBoxData is always called next
 	ld hl, sCurBoxData
@@ -227,6 +230,10 @@ SaveMainData:
 
 	ldh a, [hTileAnimations]
 	ld [sTileAnimations], a
+; fix: save repel steps remaining (Repel saving oversight).
+; Without this, the repel effect is lost when the game is saved and reloaded.
+	ld a, [wRepelRemainingSteps]
+	ld [sRepelRemainingSteps], a
 	ld hl, sGameData
 	ld bc, sGameDataEnd - sGameData
 	call CalcCheckSum

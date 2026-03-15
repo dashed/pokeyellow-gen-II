@@ -48,15 +48,27 @@ fn all_repel_types_converge_to_common() {
     // ItemUseRepel: ld b, 100 ($06 $64)
     let repel = sym_addr("ItemUseRepel");
     assert_eq!(at(&rom, bank, repel), 0x06, "ItemUseRepel: ld b, n");
-    assert_eq!(at(&rom, bank, repel + 1), 100, "ItemUseRepel: b = 100 steps");
+    assert_eq!(
+        at(&rom, bank, repel + 1),
+        100,
+        "ItemUseRepel: b = 100 steps"
+    );
 
     // ItemUseSuperRepel: ld b, 200 ($06 $C8) + jp ItemUseRepelCommon
     let super_repel = sym_addr("ItemUseSuperRepel");
-    assert_eq!(at(&rom, bank, super_repel + 1), 200, "SuperRepel: b = 200 steps");
+    assert_eq!(
+        at(&rom, bank, super_repel + 1),
+        200,
+        "SuperRepel: b = 200 steps"
+    );
 
     // ItemUseMaxRepel: ld b, 250 ($06 $FA) + jp ItemUseRepelCommon
     let max_repel = sym_addr("ItemUseMaxRepel");
-    assert_eq!(at(&rom, bank, max_repel + 1), 250, "MaxRepel: b = 250 steps");
+    assert_eq!(
+        at(&rom, bank, max_repel + 1),
+        250,
+        "MaxRepel: b = 250 steps"
+    );
 }
 
 // ─── THE FIX: wRepelRemainingSteps check ──────────────────────────────

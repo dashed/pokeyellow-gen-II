@@ -85,6 +85,14 @@ GetName::
 	ld de, wNameBuffer
 	ld bc, NAME_BUFFER_LENGTH
 	call CopyData
+; fix: force-terminate name buffer to prevent buffer overflow from
+; unterminated glitch item/move names (Yami Shop glitch).
+; PlaceString copies until '@', so an unterminated buffer overflows
+; into adjacent WRAM, corrupting mart data and other state.
+; https://glitchcity.wiki/wiki/Yami_Shop_glitch
+	ld a, "@"
+	dec de
+	ld [de], a
 .gotPtr
 	ld a, e
 	ld [wUnusedNamePointer], a
@@ -94,5 +102,4 @@ GetName::
 	pop bc
 	pop hl
 	pop af
-	call BankswitchCommon
-	ret
+	jp BankswitchCommon

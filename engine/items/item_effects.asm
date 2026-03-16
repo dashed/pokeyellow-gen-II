@@ -1463,7 +1463,7 @@ ItemUseMedicine:
 	add hl, bc ; hl now points to level
 	ld a, [hl] ; a = level
 	cp MAX_LEVEL
-	jr z, .vitaminNoEffect ; can't raise level above 100
+	jr nc, .vitaminNoEffect ; fix: cap at level >= 100 (leveling past 100 glitch)
 	inc a
 	ld [hl], a ; store incremented level
 	ld [wCurEnemyLevel], a

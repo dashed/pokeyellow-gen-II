@@ -951,16 +951,10 @@ ItemUseMedicine:
 	ld a, [wCurPartySpecies]
 	ld e, a
 	ld [wCurSpecies], a
-	pop af
-	push af
-	cp CALCIUM + 1
-	jr nc, .noHappinessBoost
-	push hl
-	push de
-	farcall_ModifyPikachuHappiness PIKAHAPPY_USEDITEM
-	pop de
-	pop hl
-.noHappinessBoost
+; fix: removed premature PIKAHAPPY_USEDITEM call that fired before
+; effect checks, allowing no-effect items to boost Pikachu happiness.
+; Happiness is now only applied on the success paths (.doneHealing
+; and .gotStatName). See: Friendship item effect glitch.
 	pop af
 	ld [wCurItem], a
 	pop af
@@ -1338,6 +1332,8 @@ ItemUseMedicine:
 	ld a, [wPseudoItemID]
 	and a ; using Softboiled?
 	jr nz, .skipRemovingItem ; no item to remove if using Softboiled
+; fix: boost Pikachu happiness only when healing item actually worked
+	farcall_ModifyPikachuHappiness PIKAHAPPY_USEDITEM
 	push hl
 	call RemoveUsedItem
 	pop hl
@@ -1462,6 +1458,8 @@ ItemUseMedicine:
 	ld de, wStringBuffer
 	ld bc, STAT_NAME_LENGTH
 	call CopyData ; copy the stat's name to wStringBuffer
+; fix: boost Pikachu happiness only when vitamin actually worked
+	farcall_ModifyPikachuHappiness PIKAHAPPY_USEDITEM
 	ld a, SFX_HEAL_AILMENT
 	call PlaySound
 	ld hl, VitaminStatRoseText

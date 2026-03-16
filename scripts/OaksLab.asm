@@ -815,6 +815,11 @@ OaksLabOak1Text:
 	ld a, [wNumSetBits]
 	cp 2
 	jr c, .check_for_poke_balls
+; fix: also check that player actually has the Pokédex (Pokédex assumption glitch).
+; Without this, having >= 2 owned species before receiving the Pokédex causes
+; Oak to show the Dex rating instead of accepting Oak's Parcel, blocking progress.
+	CheckEvent EVENT_GOT_POKEDEX
+	jr z, .check_for_poke_balls
 .already_got_poke_balls
 	ld hl, .HowIsYourPokedexComingText
 	call PrintText

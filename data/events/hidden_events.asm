@@ -536,7 +536,7 @@ DEF ANY_FACING EQU $d0
 	db -1 ; end
 
 	hidden_events_for SAFARI_ZONE_GATE
-	hidden_event 10,  1, HiddenItems, NUGGET ; inaccessible
+; fix: removed inaccessible hidden Nugget at (10, 1) — outside playable area.
 	db -1 ; end
 
 	hidden_events_for FUCHSIA_GYM

@@ -3673,6 +3673,9 @@ CheckPlayerStatusConditions:
 	ld a, [wEnemyBattleStatus1]
 	bit USING_TRAPPING_MOVE, a ; is enemy using a multi-turn move like wrap?
 	jp z, .FlinchedCheck
+; fix: clear player's recharge flag — trap replaces recharge turn
+	ld hl, wPlayerBattleStatus2
+	res NEEDS_TO_RECHARGE, [hl]
 	ld hl, CantMoveText
 	call PrintText
 	ld hl, ExecutePlayerMoveDone ; player can't move this turn
@@ -6130,6 +6133,9 @@ CheckEnemyStatusConditions:
 	ld a, [wPlayerBattleStatus1]
 	bit USING_TRAPPING_MOVE, a ; is the player using a multi-turn attack like warp
 	jp z, .checkIfFlinched
+; fix: clear enemy's recharge flag — trap replaces recharge turn
+	ld hl, wEnemyBattleStatus2
+	res NEEDS_TO_RECHARGE, [hl]
 	ld hl, CantMoveText
 	call PrintText
 	ld hl, ExecuteEnemyMoveDone ; enemy can't move this turn

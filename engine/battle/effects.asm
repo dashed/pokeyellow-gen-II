@@ -1154,8 +1154,9 @@ TrappingEffect:
 .trappingEffect
 	bit USING_TRAPPING_MOVE, [hl]
 	ret nz
-	call ClearHyperBeam ; since this effect is called before testing whether the move will hit,
-                        ; the target won't need to recharge even if the trapping move missed
+; fix: removed premature ClearHyperBeam call (Hyper Beam auto-selection glitch).
+; Recharge is now cleared in .HeldInPlaceCheck / .checkIfTrapped only when
+; the trapping move actually hit (i.e., the target is genuinely trapped).
 	set USING_TRAPPING_MOVE, [hl] ; mon is now using a trapping move
 	call BattleRandom ; 3/8 chance for 2 and 3 attacks, and 1/8 chance for 4 and 5 attacks
 	and $3

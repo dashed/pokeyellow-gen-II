@@ -237,6 +237,15 @@ BillsPCDeposit:
 .asm_215ad
 	call DisplayDepositWithdrawMenu
 	jp nc, BillsPCMenu
+; fix: prevent depositing last healthy party Pokémon.
+; Without this, players can deposit all non-fainted Pokémon,
+; leaving only fainted ones and causing an immediate blackout.
+	call CheckDepositAllowedByHP
+	jr nc, .depositOK
+	ld hl, CantDepositLastMonText
+	call PrintText
+	jp BillsPCMenu
+.depositOK
 	callfar IsThisPartyMonStarterPikachu
 	jr nc, .asm_215c9
 	ldpikacry e, PikachuCry28
@@ -501,6 +510,35 @@ SwitchOnText:
 WhatText:
 	text_far _WhatText
 	text_end
+
+; fix: check if depositing wWhichPokemon leaves at least one alive party mon.
+; Returns carry set if all other party mons are fainted (block deposit).
+; Returns carry clear if at least one other mon has HP > 0 (allow deposit).
+CheckDepositAllowedByHP:
+	ld a, [wPartyCount]
+	ld b, a ; b = party count (loop counter)
+	ld hl, wPartyMon1HP
+	ld c, 0 ; c = current party index
+	ld de, PARTYMON_STRUCT_LENGTH
+.checkLoop
+	ld a, [wWhichPokemon]
+	cp c
+	jr z, .skipMon ; skip the mon being deposited
+	ld a, [hli] ; HP high byte
+	or [hl] ; OR with HP low byte
+	jr nz, .foundHealthy
+	dec hl ; undo hli so HL stays at HP high
+.skipMon
+	add hl, de ; advance to next mon's HP
+	inc c
+	dec b
+	jr nz, .checkLoop
+	; all other mons are fainted — block deposit
+	scf
+	ret
+.foundHealthy
+	and a ; clear carry — deposit allowed
+	ret
 
 DepositWhichMonText:
 	text_far _DepositWhichMonText

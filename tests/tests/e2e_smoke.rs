@@ -151,7 +151,8 @@ fn rom_header_valid() {
     // Byte after title should be NUL (padding)
     let nul_byte = h.read_mem(0x0134 + expected_title.len() as u16);
     assert_eq!(
-        nul_byte, 0x00,
+        nul_byte,
+        0x00,
         "Title should be NUL-terminated at ${:04X}",
         0x0134 + expected_title.len() as u16
     );
@@ -207,10 +208,7 @@ fn all_key_symbols_resolvable() {
 
     for label in &labels {
         let addr = sym_addr(label);
-        assert!(
-            addr > 0,
-            "{label} should resolve to a non-zero address"
-        );
+        assert!(addr > 0, "{label} should resolve to a non-zero address");
     }
 
     // Verify bank assignments are plausible

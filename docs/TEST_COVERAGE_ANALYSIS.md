@@ -2,8 +2,8 @@
 
 Deep investigation into test coverage gaps, infrastructure capabilities, and recommendations for the pokeyellow-gen-II project.
 
-**Date**: 2026-05-23
-**Scope**: All 15 branches (14 feature + dashed/docs), 134 test files, 958 test functions
+**Date**: 2026-05-24
+**Scope**: All 15 branches (14 feature + dashed/docs), 139 test files, 1,048 test functions
 
 ---
 
@@ -16,16 +16,16 @@ The test suite achieves **100% fix-level coverage** — every one of the 117 bug
 | Metric | Value | Assessment |
 |--------|-------|------------|
 | Bug fixes with tests | 117/117 (100%) | Excellent breadth |
-| Tests that execute game code | 247/958 (26%) | Low behavioral depth |
-| ROM-byte-only tests | 696/958 (73%) | Structural, not behavioral |
+| Tests that execute game code | 318/1,048 (30%) | Improved after Tier 1 |
+| ROM-byte-only tests | 696/1,048 (66%) | Structural, not behavioral |
 | Golden image tests | 2 (0.2%) | Massively underutilized |
 | E2E gameplay tests | 10 (1.0%) | Minimal scenario coverage |
-| Overworld behavioral tests | 0/241 | Largest gap |
-| Move effect files tested | 2/14 (14%) | Critical gap |
-| Damage pipeline tested | 0% behavioral | Highest-risk gap |
+| Overworld behavioral tests | 0/241 | Largest remaining gap |
+| Move effect files tested | 3/14 (21%) | transform.asm now covered |
+| Damage pipeline tested | **Covered** (Tier 1 complete) | CalculateDamage, RandomizeDamage, CalcHitChance, type chart |
 | Built but unused infrastructure | 3 modules | InputScript DSL, LinkEndpoint, Debug utils |
 
-**Bottom line**: The test suite excels at confirming *that patches were applied* but largely doesn't verify *that patches work correctly at runtime*. The damage calculation pipeline — the most critical arithmetic in the game — has zero behavioral coverage.
+**Bottom line**: The Tier 1 CRITICAL gap (damage pipeline) has been closed — CalculateDamage, CalcHitChance, RandomizeDamage, the full type chart, and TransformEffect_ now have exhaustive behavioral tests. The remaining gaps are overworld behavioral coverage (33 files, all ROM-byte only), move effects (11/14 untested), and glitch safety runtime verification.
 
 ---
 
@@ -112,25 +112,35 @@ Input Script Test:    ▏                           1 file   (1%)    2 tests  (0
 
 ## 4. High-Risk Untested Code Paths
 
-### Tier 1: CRITICAL — Complex functions with zero behavioral coverage
+### Tier 1: CRITICAL — Complex functions (**RESOLVED**)
+
+The following Tier 1 gaps have been closed with 71 new behavioral tests:
+
+| Function | File | Status | Tests |
+|---|---|---|---|
+| **`CalculateDamage`** | `core.asm:4655` | **COVERED** | `calculate_damage.rs` — 9 tests: 3,920-combo formula sweep, min/max caps, Explosion defense halving |
+| **`RandomizeDamage`** | `core.asm:5893` | **COVERED** | `randomize_damage.rs` — 7 tests: damage ≤1 unchanged, range [85%,100%], 2000-trial uniformity |
+| **`CalcHitChance`** | `core.asm:5821` | **COVERED** | `calc_hit_chance.rs` — 9 tests: all 169 stage combos swept, boundary clamping [1,255] |
+| **`AdjustDamageForMoveType`** | `core.asm:5471` | **COVERED** | `type_chart.rs` — 13 tests: all 225 single-type pairs + 12 dual-type interactions |
+| **`TransformEffect_`** | `transform.asm` | **COVERED** | `transform_effect.rs` — 16 tests: species/types/stats/moves/DVs copy, PP=5, 2 INVULNERABLE bugs documented |
+| **Division-by-zero clamp** | `core.asm:4376` | **COVERED** | `division_zero.rs` — +3 behavioral tests: defense=0 clamp verified at runtime |
+| **Zero damage 0.25x clamp** | `core.asm:5471` | **COVERED** | `zero_damage.rs` — +6 behavioral tests: all 3 paths (normal, immune, 0.25x→1) |
+
+### Remaining CRITICAL — Still untested
 
 | Function | File | Risk | Why |
 |---|---|---|---|
-| **`CalculateDamage`** | `core.asm:4655` | **CRITICAL** | 168 lines, 27 branches. Core damage formula with 16-bit overflow capping. Used in EVERY battle. Only division-by-zero guard is ROM-byte tested. |
 | **`TryRunningFromBattle`** | `core.asm:1635` | **CRITICAL** | 119 lines, 15 branches. Complex arithmetic (`playerSpeed*32 / (enemySpeed/4%256) + 30*runAttempts`), overflow-prone, completely untested. |
 | **`CheckForDisobedience`** | `core.asm:4176` | **CRITICAL** | 179 lines, 36 branches. 2nd most branchy function in core.asm. Badge-based obedience thresholds, random outcome selection. Completely untested. |
-| **`RandomizeDamage`** | `core.asm:5893` | **CRITICAL** | Applies 85-100% damage roll via rejection sampling. Multiplies damage, divides by 255. Zero test coverage. |
-| **`CalcHitChance`** | `core.asm:5821` | **CRITICAL** | Combines accuracy + evasion stages via multiplication/division. Foundation of all hit/miss. Untested despite MoveHitTest being tested. |
 | **`SelectEnemyMove`** | `core.asm:3231` | **HIGH** | 93 lines, 18 branches. Move selection with Metronome/Mirror Move handling. |
 | **`GainExperience`** | `experience.asm` | **HIGH** | ~200 lines. Full exp distribution, level-ups, move learning. Never executed in tests. |
 
-### Move Effects: 12 of 14 implementations completely untested
+### Move Effects: 11 of 14 implementations still untested
 
-Only `substitute.asm` and `heal.asm` have test coverage:
+`substitute.asm`, `heal.asm`, and now `transform.asm` have test coverage:
 
 | Untested File | Risk | Key Concern |
 |---|---|---|
-| **`transform.asm`** | **P0** | Has 2 documented unfixed bugs (INVULNERABLE check reads wrong register) |
 | **`drain_hp.asm`** | P1 | HP recovery calculation, substitute interaction |
 | **`one_hit_ko.asm`** | P1 | Speed/level comparison for OHKO moves |
 | **`recoil.asm`** | P1 | Recoil = damage/4. What if damage < 4? |
@@ -151,11 +161,11 @@ All gym leader AIs (Brock through Giovanni), Elite Four AIs (Lorelei through Lan
 
 ## 5. Untested Boundary Conditions
 
-### Damage Pipeline
-- Attack/Defense = 0 after stat stage reduction → division by zero
-- Damage overflow at 997 cap → multi-level 16-bit comparison
+### Damage Pipeline (partially resolved)
+- ~~Attack/Defense = 0 after stat stage reduction → division by zero~~ **TESTED** (division_zero.rs behavioral)
+- ~~Damage overflow at 997 cap → multi-level 16-bit comparison~~ **TESTED** (calculate_damage.rs)
 - STAB + double super-effective (6x multiplier) → 16-bit multiplication overflow
-- RandomizeDamage rejection loop with pathological RNG
+- ~~RandomizeDamage rejection loop with pathological RNG~~ **TESTED** (randomize_damage.rs distribution)
 
 ### Stat Boundaries
 - Speed = 0 in escape formula → division by zero
@@ -266,19 +276,23 @@ The existing exhaustive tests (`accuracy.rs` with 256-value sweep, `crit.rs`) ar
 
 ## 9. Priority Recommendations
 
-### Phase 1: Critical behavioral gaps (highest risk × lowest effort)
+### Phase 1: Critical behavioral gaps — **COMPLETE**
 
-| # | What | Why | Effort |
+All 7 items delivered (71 new tests, 5 new files + 2 upgraded):
+
+| # | What | Status | Tests |
 |---|---|---|---|
-| 1 | `CalculateDamage` exhaustive pipeline test | Every battle uses this; zero behavioral coverage | Medium |
-| 2 | `AdjustDamageForMoveType` type chart sweep (225 combos) | Multiplicative accumulation fix changed core logic | Low |
-| 3 | `RandomizeDamage` distribution test | Damage roll affects every attack | Low |
-| 4 | `CalcHitChance` behavioral test | Foundation of all accuracy calculations | Medium |
-| 5 | `transform.asm` behavioral test | Has documented unfixed bugs | Medium |
-| 6 | Division-by-zero behavioral upgrade | Upgrade ROM-byte test to inject defense=0 | Low |
-| 7 | Zero damage 0.25x clamp behavioral test | Three-way branch needs all paths executed | Low |
+| 1 | `CalculateDamage` exhaustive pipeline test | **DONE** — `calculate_damage.rs` | 9 |
+| 2 | `AdjustDamageForMoveType` type chart sweep (225 combos) | **DONE** — `type_chart.rs` | 13 |
+| 3 | `RandomizeDamage` distribution test | **DONE** — `randomize_damage.rs` | 7 |
+| 4 | `CalcHitChance` behavioral test | **DONE** — `calc_hit_chance.rs` | 9 |
+| 5 | `transform.asm` behavioral test | **DONE** — `transform_effect.rs` | 16 |
+| 6 | Division-by-zero behavioral upgrade | **DONE** — `division_zero.rs` +3 | 3 |
+| 7 | Zero damage 0.25x clamp behavioral test | **DONE** — `zero_damage.rs` +6 | 6 |
 
-### Phase 2: Coverage depth improvements
+Branch placement: Items 1, 3, 4, 5 on `dashed/tests`; Items 2, 6, 7 on `dashed/battle-bugs`.
+
+### Phase 2: Coverage depth improvements (next priority)
 
 | # | What | Why | Effort |
 |---|---|---|---|
@@ -307,13 +321,14 @@ The existing exhaustive tests (`accuracy.rs` with 256-value sweep, `crit.rs`) ar
 
 ## 10. Implementation Roadmap
 
-### Sprint 1: Damage Pipeline (1-2 days)
-- Tasks 1-3, 6-7: Exhaustive damage pipeline tests
-- Reuse `accuracy.rs` exhaustive pattern (register injection + sweep)
-- Expected: 5 new test files, ~50 test functions
+### Sprint 1: Damage Pipeline — **COMPLETE** (2026-05-24)
+- ~~Tasks 1-3, 6-7: Exhaustive damage pipeline tests~~ **DONE**
+- 5 new test files + 2 upgraded, 71 new test functions
+- Pattern: register injection + sweep (reused accuracy.rs pattern)
+- Branch: `dashed/tests` (4 vanilla) + `dashed/battle-bugs` (3 fix-specific)
 
 ### Sprint 2: Battle Behavioral Depth (2-3 days)
-- Tasks 4-5, 10-12: Hit chance, disobedience, move effects
+- Tasks 10-12: Escape formula, disobedience, move effects
 - Task 15: BattleFixture extraction
 - Expected: 12 new test files, ~100 test functions
 
@@ -331,9 +346,10 @@ The existing exhaustive tests (`accuracy.rs` with 256-value sweep, `crit.rs`) ar
 - Tasks 14, 20-21: E2E expansion, link tests, AI tests
 - Expected: 8 new test files, ~40 test functions
 
-### Total estimated new tests: ~250 test functions across ~40 files
-### Projected test count: ~1,200 tests (from current 958)
+### Remaining estimated new tests: ~180 test functions across ~35 files
+### Current test count: 1,048 (up from 958 after Sprint 1)
+### Projected final count: ~1,230 tests
 
 ---
 
-*Analysis produced by 4-agent parallel investigation: fix-auditor, harness-analyzer, coverage-mapper, asm-analyzer.*
+*Analysis produced by 4-agent parallel investigation (fix-auditor, harness-analyzer, coverage-mapper, asm-analyzer). Sprint 1 implemented by 4-agent parallel team (damage-pipeline, type-chart, rng-hitchance, transform-test). Updated 2026-05-24.*

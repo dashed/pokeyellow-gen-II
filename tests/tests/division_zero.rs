@@ -263,20 +263,14 @@ fn run_player_damage_vars(defense_hi: u8, defense_lo: u8) -> u8 {
 fn behavioral_defense_zero_clamp() {
     // Defense = 1: bc = [0x00, 0x01]. After >>2: bc = 0 → clamp c to 1.
     let c = run_player_damage_vars(0x00, 0x01);
-    assert_eq!(
-        c, 1,
-        "Defense 1 after >>2 should be clamped to 1, got {c}"
-    );
+    assert_eq!(c, 1, "Defense 1 after >>2 should be clamped to 1, got {c}");
 }
 
 #[test]
 fn behavioral_defense_3_clamps_to_1() {
     // Defense = 3: bc = [0x00, 0x03]. After >>2: 3/4 = 0 → clamp c to 1.
     let c = run_player_damage_vars(0x00, 0x03);
-    assert_eq!(
-        c, 1,
-        "Defense 3 after >>2 should be clamped to 1, got {c}"
-    );
+    assert_eq!(c, 1, "Defense 3 after >>2 should be clamped to 1, got {c}");
 }
 
 #[test]

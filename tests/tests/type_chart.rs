@@ -28,8 +28,21 @@ const ICE: u8 = 0x19;
 const DRAGON: u8 = 0x1A;
 
 const ALL_TYPES: [u8; 15] = [
-    NORMAL, FIGHTING, FLYING, POISON, GROUND, ROCK, BUG, GHOST,
-    FIRE, WATER, GRASS, ELECTRIC, PSYCHIC_TYPE, ICE, DRAGON,
+    NORMAL,
+    FIGHTING,
+    FLYING,
+    POISON,
+    GROUND,
+    ROCK,
+    BUG,
+    GHOST,
+    FIRE,
+    WATER,
+    GRASS,
+    ELECTRIC,
+    PSYCHIC_TYPE,
+    ICE,
+    DRAGON,
 ];
 
 const EFFECTIVE: u8 = 10;
@@ -223,7 +236,10 @@ fn exhaustive_type_chart_single_type() {
 fn ice_vs_grass_ground_is_4x_super_effective() {
     // Ice→Grass = SE (×2), Ice→Ground = SE (×2) → 4×
     let eff = calc_effectiveness(ICE, GRASS, GROUND);
-    assert_eq!(eff, 40, "Ice vs Grass/Ground should be 4× SE (40), got {eff}");
+    assert_eq!(
+        eff, 40,
+        "Ice vs Grass/Ground should be 4× SE (40), got {eff}"
+    );
 }
 
 #[test]
@@ -237,35 +253,50 @@ fn rock_vs_fire_ice_is_4x_super_effective() {
 fn bug_vs_grass_psychic_is_4x_super_effective() {
     // Bug→Grass = SE (×2), Bug→Psychic = SE (×2) → 4×
     let eff = calc_effectiveness(BUG, GRASS, PSYCHIC_TYPE);
-    assert_eq!(eff, 40, "Bug vs Grass/Psychic should be 4× SE (40), got {eff}");
+    assert_eq!(
+        eff, 40,
+        "Bug vs Grass/Psychic should be 4× SE (40), got {eff}"
+    );
 }
 
 #[test]
 fn ground_vs_electric_poison_is_4x_super_effective() {
     // Ground→Electric = SE (×2), Ground→Poison = SE (×2) → 4×
     let eff = calc_effectiveness(GROUND, ELECTRIC, POISON);
-    assert_eq!(eff, 40, "Ground vs Electric/Poison should be 4× SE (40), got {eff}");
+    assert_eq!(
+        eff, 40,
+        "Ground vs Electric/Poison should be 4× SE (40), got {eff}"
+    );
 }
 
 #[test]
 fn electric_vs_water_ground_is_immune() {
     // Electric→Water = SE (×2), Electric→Ground = immune (×0) → immune overrides
     let eff = calc_effectiveness(ELECTRIC, WATER, GROUND);
-    assert_eq!(eff, 0, "Electric vs Water/Ground should be immune (0), got {eff}");
+    assert_eq!(
+        eff, 0,
+        "Electric vs Water/Ground should be immune (0), got {eff}"
+    );
 }
 
 #[test]
 fn fire_vs_grass_water_is_neutral() {
     // Fire→Grass = SE (×2), Fire→Water = NVE (×0.5) → ×1 neutral
     let eff = calc_effectiveness(FIRE, GRASS, WATER);
-    assert_eq!(eff, 10, "Fire vs Grass/Water should be neutral (10), got {eff}");
+    assert_eq!(
+        eff, 10,
+        "Fire vs Grass/Water should be neutral (10), got {eff}"
+    );
 }
 
 #[test]
 fn poison_vs_grass_rock_is_neutral() {
     // Poison→Grass = SE (×2), Poison→Rock = NVE (×0.5) → ×1 neutral
     let eff = calc_effectiveness(POISON, GRASS, ROCK);
-    assert_eq!(eff, 10, "Poison vs Grass/Rock should be neutral (10), got {eff}");
+    assert_eq!(
+        eff, 10,
+        "Poison vs Grass/Rock should be neutral (10), got {eff}"
+    );
 }
 
 #[test]
@@ -273,21 +304,30 @@ fn ghost_vs_normal_psychic_is_immune() {
     // Ghost→Normal = immune (×0), Ghost→Psychic = immune (×0) → immune
     // (In Gen I, Ghost has NO_EFFECT against Psychic — a famous bug)
     let eff = calc_effectiveness(GHOST, NORMAL, PSYCHIC_TYPE);
-    assert_eq!(eff, 0, "Ghost vs Normal/Psychic should be immune (0), got {eff}");
+    assert_eq!(
+        eff, 0,
+        "Ghost vs Normal/Psychic should be immune (0), got {eff}"
+    );
 }
 
 #[test]
 fn flying_vs_fighting_rock_is_neutral() {
     // Flying→Fighting = SE (×2), Flying→Rock = NVE (×0.5) → ×1 neutral
     let eff = calc_effectiveness(FLYING, FIGHTING, ROCK);
-    assert_eq!(eff, 10, "Flying vs Fighting/Rock should be neutral (10), got {eff}");
+    assert_eq!(
+        eff, 10,
+        "Flying vs Fighting/Rock should be neutral (10), got {eff}"
+    );
 }
 
 #[test]
 fn ice_vs_water_flying_is_neutral() {
     // Ice→Water = NVE (×0.5), Ice→Flying = SE (×2) → ×1 neutral
     let eff = calc_effectiveness(ICE, WATER, FLYING);
-    assert_eq!(eff, 10, "Ice vs Water/Flying should be neutral (10), got {eff}");
+    assert_eq!(
+        eff, 10,
+        "Ice vs Water/Flying should be neutral (10), got {eff}"
+    );
 }
 
 #[test]
@@ -296,12 +336,18 @@ fn grass_vs_poison_rock_is_quarter_effective() {
     // Wait: Grass→Rock is SE, Grass→Poison is NVE → neutral
     // Actually let's pick Grass vs Fire/Dragon: NVE × NVE = 0.25×
     let eff = calc_effectiveness(GRASS, FIRE, DRAGON);
-    assert!(eff < 10, "Grass vs Fire/Dragon should be 0.25× NVE ({eff} < 10)");
+    assert!(
+        eff < 10,
+        "Grass vs Fire/Dragon should be 0.25× NVE ({eff} < 10)"
+    );
 }
 
 #[test]
 fn fighting_vs_rock_ice_is_4x_super_effective() {
     // Fighting→Rock = SE (×2), Fighting→Ice = SE (×2) → 4×
     let eff = calc_effectiveness(FIGHTING, ROCK, ICE);
-    assert_eq!(eff, 40, "Fighting vs Rock/Ice should be 4× SE (40), got {eff}");
+    assert_eq!(
+        eff, 40,
+        "Fighting vs Rock/Ice should be 4× SE (40), got {eff}"
+    );
 }

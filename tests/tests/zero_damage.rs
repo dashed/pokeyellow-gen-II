@@ -240,8 +240,7 @@ fn run_damage_scenario(
     h.write_mem(W_MOVE_MISSED, 0);
 
     h.set_b(move_type);
-    h.gb
-        .cpu()
+    h.gb.cpu()
         .set_de(((def_type1 as u16) << 8) | def_type2 as u16);
 
     h.set_pc(sym_addr("AdjustDamageForMoveType.skipSameTypeAttackBonus"));
@@ -263,9 +262,16 @@ fn behavioral_quarter_effective_clamps_to_1() {
     // With base damage 2: floor(2 * 0.5) = 1, floor(1 * 0.5) = 0.
     // The fix should clamp damage to 1 instead of reporting a miss.
     let r = run_damage_scenario(GRASS, FIRE, FLYING, 2);
-    assert_eq!(r.damage, 1, "0.25× damage should clamp to 1, got {}", r.damage);
+    assert_eq!(
+        r.damage, 1,
+        "0.25× damage should clamp to 1, got {}",
+        r.damage
+    );
     assert_eq!(r.move_missed, 0, "move should NOT be flagged as missed");
-    assert!(r.effectiveness > 0, "effectiveness should be non-zero (not immune)");
+    assert!(
+        r.effectiveness > 0,
+        "effectiveness should be non-zero (not immune)"
+    );
 }
 
 #[test]
@@ -303,7 +309,11 @@ fn behavioral_neutral_preserves_damage() {
     // Normal vs Normal (mono-type) = neutral (1×).
     // No TypeEffects entry → damage unchanged.
     let r = run_damage_scenario(NORMAL, NORMAL, NORMAL, 100);
-    assert_eq!(r.damage, 100, "neutral damage should be 100, got {}", r.damage);
+    assert_eq!(
+        r.damage, 100,
+        "neutral damage should be 100, got {}",
+        r.damage
+    );
     assert_eq!(r.move_missed, 0, "neutral hit should NOT set wMoveMissed");
     assert_eq!(r.effectiveness, 10, "effectiveness should be 10 (neutral)");
 }

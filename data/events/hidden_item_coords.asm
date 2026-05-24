@@ -58,7 +58,10 @@ HiddenItemCoords:
 	hidden_item POKEMON_TOWER_5F,               4,  12
 	hidden_item VERMILION_CITY,                14,  11
 	hidden_item CELADON_CITY,                  48,  15
-	hidden_item SAFARI_ZONE_GATE,              10,   1 ; inaccessible
+; fix: removed inaccessible hidden Nugget from Safari Zone Gate.
+; Coordinates (10, 1) are in the black void outside the playable area,
+; but Itemfinder still detected it from nearby tiles.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_overworld_glitches_in_Generation_I
 	hidden_item POKEMON_MANSION_1F,             8,  16
 	assert_max_table_length MAX_HIDDEN_ITEMS
 	db -1 ; end

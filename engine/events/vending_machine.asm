@@ -35,17 +35,21 @@ VendingMachineMenu::
 	ld a, [wCurrentMenuItem]
 	cp 3 ; chose Cancel?
 	jr z, .notThirsty
-	xor a
+; fix: load selected item's price first, then check against it.
+; Without this, HasEnoughMoney always checks against ¥200 (Fresh Water),
+; allowing Soda Pop (¥300) and Lemonade (¥350) to be purchased for free.
+	call LoadVendingMachineItem
+	ldh a, [hVendingMachinePrice]
 	ldh [hMoney], a
-	ldh [hMoney + 2], a
-	ld a, $2
+	ldh a, [hVendingMachinePrice + 1]
 	ldh [hMoney + 1], a
+	ldh a, [hVendingMachinePrice + 2]
+	ldh [hMoney + 2], a
 	call HasEnoughMoney
 	jr nc, .enoughMoney
 	ld hl, VendingMachineText4
 	jp PrintText
 .enoughMoney
-	call LoadVendingMachineItem
 	ldh a, [hVendingMachineItem]
 	ld b, a
 	ld c, 1

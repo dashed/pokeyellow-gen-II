@@ -16,6 +16,7 @@ Route17_Object:
 	def_warp_events
 
 	def_bg_events
+	bg_event  5, -1, TEXT_ROUTE17_ROUTE_16_SIGN
 	bg_event  9, 51, TEXT_ROUTE17_NOTICE_SIGN1
 	bg_event  9, 63, TEXT_ROUTE17_TRAINER_TIPS1
 	bg_event  9, 75, TEXT_ROUTE17_TRAINER_TIPS2

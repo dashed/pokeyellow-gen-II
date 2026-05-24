@@ -118,6 +118,11 @@ LoadFrontSpriteByMonIndex::
 	; or https://bulbapedia.bulbagarden.net/wiki/Rhydon_glitch)
 	ld a, RHYDON
 	ld [wCurPartySpecies], a
+; Inverted sprite fix: clear wSpriteFlipped so a glitch Pokémon's
+; invalid dex number doesn't leave the flag set, causing all
+; subsequent sprites to render horizontally inverted.
+	xor a
+	ld [wSpriteFlipped], a
 	ret
 .validDexNumber
 	push hl
@@ -449,8 +454,7 @@ GetMonHeader::
 	pop de
 	pop bc
 	pop af
-	call BankswitchCommon
-	ret
+	jp BankswitchCommon
 
 ; copy party pokemon's name to wNameBuffer
 GetPartyMonName2::

@@ -206,6 +206,14 @@ FlyAnimationScreenCoords2:
 	db $F0, $00
 
 LeaveMapThroughHoleAnim:
+; If the player is riding the Bicycle, reset the music before the hole
+; animation plays. Without this, bike music keeps playing on the new map
+; because the animation runs before LoadMapData can update the music.
+; https://glitchcity.wiki/wiki/Bicycle_music_hole_glitch
+; https://bulbapedia.bulbagarden.net/wiki/List_of_overworld_glitches_(Generation_I)#Victory_Road_Bicycle_music_quirk
+	ld a, [wLastMusicSoundID]
+	cp MUSIC_BIKE_RIDING
+	call z, PlayDefaultMusic
 	ld a, $ff
 	ld [wUpdateSpritesEnabled], a ; disable UpdateSprites
 	; shift upper half of player's sprite down 8 pixels and hide lower half
@@ -323,6 +331,14 @@ PlayerSpinInPlace:
 	jr PlayerSpinInPlace
 
 PlayerSpinWhileMovingUpOrDown:
+; Fix: hl must point into wFacingDirectionList for SpinPlayerSprite.
+; All callers set up wPlayerSpinWhileMovingUpOrDown* params via [hli],
+; leaving hl at wPlayerSpinWhileMovingUpOrDownAnimFrameDelay. Without
+; this reload, SpinPlayerSprite reads that delay value (2 or 3) as a
+; facing index, producing garbled sprites on DMG and no spin on SGB.
+; https://glitchcity.wiki/wiki/Escape_sprite_handling_glitch
+; https://bulbapedia.bulbagarden.net/wiki/List_of_overworld_glitches_(Generation_I)
+	ld hl, wFacingDirectionList
 	call SpinPlayerSprite
 	ld a, [wPlayerSpinWhileMovingUpOrDownAnimDeltaY]
 	ld c, a

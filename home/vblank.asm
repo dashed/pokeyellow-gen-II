@@ -31,7 +31,11 @@ VBlank::
 	call VBlankCopy
 	call VBlankCopyDouble
 	call UpdateMovingBgTiles
+	ldh a, [hOAMUpdateLocked]
+	and a
+	jr nz, .skipOAM
 	call hDMARoutine
+.skipOAM
 	ld a, BANK(PrepareOAMData)
 	ldh [hLoadedROMBank], a
 	ld [rROMB], a

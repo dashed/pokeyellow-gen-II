@@ -369,9 +369,16 @@ MainInBattleLoop:
 	ld b, 0
 	add hl, bc
 	ld a, [hl]
-	cp METRONOME ; a MIRROR MOVE check is missing, might lead to a desync in link battles
-	             ; when combined with multi-turn moves
+	cp METRONOME
+; fix: also check for Mirror Move, not just Metronome. If Mirror Move copied
+; a trapping move and the enemy switches during its continuation, both
+; consoles must agree that the original move was Mirror Move (not the
+; trapping move itself), otherwise the games desynchronize.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Mirror_Move_glitch
+	jr z, .setSpecialMove
+	cp MIRROR_MOVE
 	jr nz, .specialMoveNotUsed
+.setSpecialMove
 	ld [wPlayerSelectedMove], a
 .specialMoveNotUsed
 	callfar SwitchEnemyMon
@@ -485,6 +492,13 @@ HandlePoisonBurnLeechSeed:
 	ld hl, wEnemyMonHP
 	ld de, wEnemyMonStatus
 .playersTurn
+; Poison/Burn 0 HP fix: if HP is already 0 (from confusion self-damage
+; or recoil), skip all residual damage and animation.  Without this
+; check, the poison/burn text and flash animation play on a 0 HP mon.
+	ld a, [hli]
+	or [hl]
+	dec hl
+	jr z, .notLeechSeeded ; HP = 0 → skip to faint path
 	ld a, [de]
 	and (1 << BRN) | (1 << PSN)
 	jr z, .notBurnedOrPoisoned
@@ -524,7 +538,7 @@ HandlePoisonBurnLeechSeed:
 	pop af
 	ldh [hWhoseTurn], a
 	pop hl
-	call HandlePoisonBurnLeechSeed_DecreaseOwnHP
+	call HandlePoisonBurnLeechSeed_DecreaseOwnHP_NoToxic
 	call HandlePoisonBurnLeechSeed_IncreaseEnemyHP
 	push hl
 	ld hl, HurtByLeechSeedText
@@ -553,12 +567,18 @@ HurtByLeechSeedText:
 	text_end
 
 ; decreases the mon's current HP by 1/16 of the Max HP (multiplied by number of toxic ticks if active)
-; note that the toxic ticks are considered even if the damage is not poison (hence the Leech Seed glitch)
 ; hl: HP pointer
 ; bc (out): total damage
+HandlePoisonBurnLeechSeed_DecreaseOwnHP_NoToxic:
+; Same as HandlePoisonBurnLeechSeed_DecreaseOwnHP but skips Toxic N multiplier.
+; Used for Leech Seed damage, which should always be flat maxHP/16.
+	ld a, 1            ; flag = skip Toxic
+	db $06             ; ld b, n — swallows the next byte (xor a = $AF → ld b, $AF)
 HandlePoisonBurnLeechSeed_DecreaseOwnHP:
+	xor a              ; flag = apply Toxic
 	push hl
 	push hl
+	push af            ; save skip-Toxic flag
 	ld bc, $e      ; skip to max HP
 	add hl, bc
 	ld a, [hli]    ; load max HP
@@ -578,6 +598,9 @@ HandlePoisonBurnLeechSeed_DecreaseOwnHP:
 	jr nz, .nonZeroDamage
 	inc c         ; damage is at least 1
 .nonZeroDamage
+	pop af             ; recover skip-Toxic flag
+	and a
+	jr nz, .noToxic    ; flag set → Leech Seed path, skip Toxic multiplier
 	ld hl, wPlayerBattleStatus3
 	ld de, wPlayerToxicCounter
 	ldh a, [hWhoseTurn]
@@ -753,17 +776,12 @@ FaintEnemyPokemon:
 .wild
 	ld hl, wPlayerBattleStatus1
 	res ATTACKING_MULTIPLE_TIMES, [hl]
-; Bug. This only zeroes the high byte of the player's accumulated damage,
-; setting the accumulated damage to itself mod 256 instead of 0 as was probably
-; intended. That alone is problematic, but this mistake has another more severe
-; effect. This function's counterpart for when the player mon faints,
-; RemoveFaintedPlayerMon, zeroes both the high byte and the low byte. In a link
-; battle, the other player's Game Boy will call that function in response to
-; the enemy mon (the player mon from the other side's perspective) fainting,
-; and the states of the two Game Boys will go out of sync unless the damage
-; was congruent to 0 modulo 256.
+; fix: clear both bytes of accumulated Bide damage (was only clearing high byte,
+; causing link battle desync with RemoveFaintedPlayerMon which clears both)
 	xor a
-	ld [wPlayerBideAccumulatedDamage], a
+	ld hl, wPlayerBideAccumulatedDamage
+	ld [hli], a
+	ld [hl], a
 	ld hl, wEnemyStatsToDouble ; clear enemy statuses
 	ld [hli], a
 	ld [hli], a
@@ -782,6 +800,13 @@ FaintEnemyPokemon:
 	hlcoord 0, 0
 	lb bc, 4, 11
 	call ClearScreenArea
+; fix: check if any party Pokémon are alive before playing victory music.
+; Without this, Explosion/Self-Destruct double-faints play victory music
+; even though the player lost.
+	call AnyPartyAlive
+	ld a, d
+	and a
+	push af ; Z = no party alive
 	ld a, [wIsInBattle]
 	dec a
 	jr z, .wild_win
@@ -797,14 +822,15 @@ FaintEnemyPokemon:
 	ld a, SFX_FAINT_THUD
 	call PlaySound
 	call WaitForSoundToFinish
+	pop af ; balance stack (trainer path doesn't play victory music here)
 	jr .sfxplayed
 .wild_win
+	pop af
+	jr z, .sfxplayed ; party dead — skip victory music
 	call EndLowHealthAlarm
 	ld a, MUSIC_DEFEATED_WILD_MON
 	call PlayBattleVictoryMusic
 .sfxplayed
-; bug: win sfx is played for wild battles before checking for player mon HP
-; this can lead to odd scenarios where both player and enemy faint, as the win sfx plays yet the player never won the battle
 	ld hl, wBattleMonHP
 	ld a, [hli]
 	or [hl]
@@ -826,11 +852,17 @@ FaintEnemyPokemon:
 	ld [wBattleResult], a
 	ld b, EXP_ALL
 	call IsItemInBag
-	push af
-	jr z, .giveExpToMonsThatFought ; if no exp all, then jump
+	jr nz, .hasExpAll
 
-; the player has exp all
-; first, we halve the values that determine exp gain
+; no Exp. All — give exp only to mons that fought
+	xor a
+	ld [wBoostExpByExpAll], a
+	callfar GainExperience
+	ret
+
+.hasExpAll
+; the player has Exp. All
+; first, halve the values that determine exp gain
 ; the enemy mon base stats are added to stat exp, so they are halved
 ; the base exp (which determines normal exp) is also halved
 	ld hl, wEnemyMonBaseStats
@@ -841,18 +873,56 @@ FaintEnemyPokemon:
 	dec b
 	jr nz, .halveExpDataLoop
 
-; give exp (divided evenly) to the mons that actually fought in battle against the enemy mon that has fainted
-; if exp all is in the bag, this will be only be half of the stat exp and normal exp, due to the above loop
-.giveExpToMonsThatFought
+; fix: count the number of battle participants before GainExperience
+; divides wEnemyMonBaseStats in place (via DivideExpDataByNumMonsGainingExp).
+; we need the count afterward to multiply back (approximately restoring the
+; halved values — integer division truncation may lose a small amount).
+	ld a, [wPartyGainExpFlags]
+	ld b, a
+	xor a
+	ld c, PARTY_LENGTH
+	ld d, 0
+.countParticipantsLoop
+	xor a
+	srl b
+	adc d
+	ld d, a
+	dec c
+	jr nz, .countParticipantsLoop
+	push af ; save participant count
+
+; give half exp (divided among fighters) to mons that fought
 	xor a
 	ld [wBoostExpByExpAll], a
 	callfar GainExperience
-	pop af
-	ret z ; return if no exp all
 
-; the player has exp all
+; fix: DivideExpDataByNumMonsGainingExp divided wEnemyMonBaseStats by the
+; number of fighters. Multiply back to approximately restore the halved values
+; so the second GainExperience call distributes the correct half to all party
+; members. (Integer division truncation may lose a small amount per byte.)
+; Without this fix, the second call only gets (half / numFighters) instead of half.
+	pop af ; restore participant count
+	cp 2
+	jr c, .skipMultiply ; if only 1 fighter, no division happened
+	ld b, a ; b = participant count
+	ld hl, wEnemyMonBaseStats
+	ld c, NUM_STATS + 2
+.multiplyBaseStatsLoop
+	ld a, [hl]
+	ld d, a ; d = value (addend)
+	ld e, b ; e = loop counter (participant count)
+	dec e   ; already have 1× the value in a
+.multiplyInnerLoop
+	add d   ; a += value
+	dec e
+	jr nz, .multiplyInnerLoop
+	ld [hli], a
+	dec c
+	jr nz, .multiplyBaseStatsLoop
+
+.skipMultiply
 ; now, set the gain exp flag for every party member
-; half of the total stat exp and normal exp will divided evenly amongst every party member
+; half of the total stat exp and normal exp will be divided evenly amongst every party member
 	ld a, TRUE
 	ld [wBoostExpByExpAll], a
 	ld a, [wPartyCount]
@@ -1224,7 +1294,7 @@ LinkBattleLostText:
 	text_end
 
 ; slides pic of fainted mon downwards until it disappears
-; bug: when this is called, [hAutoBGTransferEnabled] is non-zero, so there is screen tearing
+; fix: disable hAutoBGTransferEnabled during tilemap modification to prevent tearing
 SlideDownFaintedMonPic:
 	ld a, [wStatusFlags5]
 	push af
@@ -1236,6 +1306,8 @@ SlideDownFaintedMonPic:
 	push de
 	push hl
 	ld b, PIC_HEIGHT - 1 ; number of rows
+	xor a
+	ldh [hAutoBGTransferEnabled], a ; disable BG transfer while modifying tilemap
 .rowLoop
 	push bc
 	push hl
@@ -1260,6 +1332,8 @@ SlideDownFaintedMonPic:
 	add hl, bc
 	ld de, SevenSpacesText
 	call PlaceString
+	ld a, 1
+	ldh [hAutoBGTransferEnabled], a ; re-enable so DelayFrames transfers the completed frame
 	ld c, 2
 	call DelayFrames
 	pop hl
@@ -1278,7 +1352,7 @@ SevenSpacesText:
 ; slides the player or enemy trainer off screen
 ; a is the number of tiles to slide it horizontally (always 9 for the player trainer or 8 for the enemy trainer)
 ; if a is 8, the slide is to the right, else it is to the left
-; bug: when this is called, [hAutoBGTransferEnabled] is non-zero, so there is screen tearing
+; fix: disable hAutoBGTransferEnabled during tilemap modification to prevent tearing
 SlideTrainerPicOffScreen:
 	ldh [hSlideAmount], a
 	ld c, a
@@ -1286,6 +1360,8 @@ SlideTrainerPicOffScreen:
 	push bc
 	push hl
 	ld b, PIC_HEIGHT ; number of rows
+	xor a
+	ldh [hAutoBGTransferEnabled], a ; disable BG transfer while modifying tilemap
 .rowLoop
 	push hl
 	ldh a, [hSlideAmount]
@@ -1311,6 +1387,8 @@ SlideTrainerPicOffScreen:
 	add hl, de
 	dec b
 	jr nz, .rowLoop
+	ld a, 1
+	ldh [hAutoBGTransferEnabled], a ; re-enable so DelayFrames transfers the completed frame
 	ld c, 2
 	call DelayFrames
 	pop hl
@@ -1348,6 +1426,10 @@ EnemySendOutFirstMon:
 	ld [wEnemyDisabledMoveNumber], a
 	ld [wEnemyMonMinimized], a
 	ld hl, wPlayerUsedMove
+	ld [hli], a
+	ld [hl], a
+; fix: clear wDamage so Counter can't use stale damage from a previous matchup
+	ld hl, wDamage
 	ld [hli], a
 	ld [hl], a
 	dec a
@@ -1478,7 +1560,17 @@ EnemySendOutFirstMon:
 	hlcoord 15, 6
 	predef AnimateSendingOutMon
 	ld a, [wEnemyMonSpecies2]
+; Pikachu cry fix: in link battles (and trainer battles), the enemy
+; Pikachu always played the electronic cry instead of the voice cry.
+; Check if the enemy species is Pikachu and play the voice if so.
+	cp PIKACHU
+	jr nz, .notEnemyPikachu
+	ldpikacry e, PikachuCry11
+	callfar PlayPikachuSoundClip
+	jr .afterEnemyCry
+.notEnemyPikachu
 	call PlayCry
+.afterEnemyCry
 	call DrawEnemyHUDAndHPBar
 	ld a, [wCurrentMenuItem]
 	and a
@@ -1799,12 +1891,22 @@ SendOutMon:
 	ld [wPlayerDisabledMove], a
 	ld [wPlayerDisabledMoveNumber], a
 	ld [wPlayerMonMinimized], a
+; fix: clear wDamage so Counter can't use stale damage from a previous matchup
+	ld hl, wDamage
+	ld [hli], a
+	ld [hl], a
 	ld b, SET_PAL_BATTLE
 	call RunPaletteCommand
 	ld hl, wEnemyBattleStatus1
 	res USING_TRAPPING_MOVE, [hl]
 	callfar IsThisPartyMonStarterPikachu
-	jr c, .starterPikachu
+	jr nc, .notStarterPikachu
+; fix: in the first rival battle, Pikachu is still in its Poké Ball
+; (overworld sprite disabled). Use the normal Poké Ball animation.
+	ld a, [wPikachuOverworldStateFlags]
+	bit 3, a ; bit 3 = sprite drawing disabled (still in ball)
+	jr z, .starterPikachu
+.notStarterPikachu
 	ld a, $1
 	ldh [hWhoseTurn], a
 	ld a, POOF_ANIM
@@ -1951,9 +2053,18 @@ DrawPlayerHUDAndHPBar:
 	xor a
 	ld [wChannelSoundIDs + CHAN5], a
 	ret
+; fix: play the low health alarm for only 4 beep cycles (≈2 seconds) instead
+; of continuously. This prevents the alarm from overriding battle move sounds
+; and animations due to the Game Boy's limited audio channels.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Red_bar_glitch
 .setLowHealthAlarm
 	ld hl, wLowHealthAlarm
+	bit BIT_LOW_HEALTH_ALARM, [hl]
+	jr nz, .alarmAlreadyOn ; don't reset counter if alarm is already active
 	set BIT_LOW_HEALTH_ALARM, [hl]
+	ld a, 4
+	ld [wLowHealthAlarmCounter], a
+.alarmAlreadyOn
 	ret
 
 DrawEnemyHUDAndHPBar:
@@ -2495,7 +2606,14 @@ PartyMenuOrRockOrRun:
 	ld hl, AnimationMinimizeMon
 	jr nz, .doEnemyMonAnimation
 ; enemy mon is not minimized
+; fix: in ghost battles, reload ghost sprite instead of revealing real species
+	call IsGhostBattle
+	jr nz, .notGhostReload
+	ld a, MON_GHOST
+	jr .gotEnemySpecies
+.notGhostReload
 	ld a, [wEnemyMonSpecies]
+.gotEnemySpecies
 	ld [wCurPartySpecies], a
 	ld [wCurSpecies], a
 	call GetMonHeader
@@ -2937,9 +3055,6 @@ IF DEF(_DEBUG)
 	bit BIT_TEST_BATTLE, a
 	jp nz, Func_3d4f5
 ENDC
-	ld a, [wPlayerBattleStatus3]
-	bit TRANSFORMED, a
-	jp nz, MoveSelectionMenu
 	ld a, [wMenuItemToSwap]
 	and a
 	jr z, .noMenuItemSelected
@@ -2976,6 +3091,11 @@ ENDC
 	add b
 	ld [hl], a
 .swapMovesInPartyMon
+; Skip party data swap if transformed — battle move order still swapped above,
+; but we must not overwrite the real moveset with transformed moves.
+	ld a, [wPlayerBattleStatus3]
+	bit TRANSFORMED, a
+	jr nz, .doneSwap
 	ld hl, wPartyMon1Moves
 	ld a, [wPlayerMonNumber]
 	ld bc, PARTYMON_STRUCT_LENGTH
@@ -2986,6 +3106,7 @@ ENDC
 	ld bc, MON_PP - MON_MOVES
 	add hl, bc
 	call .swapBytes ; swap move PP
+.doneSwap
 	xor a
 	ld [wMenuItemToSwap], a ; deselect the item
 	jp MoveSelectionMenu
@@ -3033,7 +3154,7 @@ PrintMenuItem:
 	hlcoord 1, 10
 	ld de, DisabledText
 	call PlaceString
-	jr .moveDisabled
+	jp .moveDisabled
 .notDisabled
 	ld hl, wCurrentMenuItem
 	dec [hl]
@@ -3049,7 +3170,23 @@ PrintMenuItem:
 	                            ; isn't actually selected (just pointed to by the cursor)
 	ld a, [wPlayerMonNumber]
 	ld [wWhichPokemon], a
+; Mimic PP glitch fix: when Mimic copies a move, the fight menu shows
+; the copied move's max PP instead of Mimic's.  Check the party data
+; to see if this slot originally had Mimic; if so, use party data for
+; GetMaxPP so it looks up Mimic's base PP (10) instead of the copy's.
+	ld hl, wPartyMon1Moves
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes ; a still has wPlayerMonNumber
+	ld a, [wCurrentMenuItem]
+	ld c, a
+	ld b, 0
+	add hl, bc
+	ld a, [hl]
+	cp MIMIC
 	ld a, BATTLE_MON_DATA
+	jr nz, .gotMaxPPSource
+	ld a, PLAYER_PARTY_DATA
+.gotMaxPPSource
 	ld [wMonDataLocation], a
 	callfar GetMaxPP
 	ld hl, wCurrentMenuItem
@@ -3255,7 +3392,12 @@ ExecutePlayerMove:
 	ld a, [wPlayerSelectedMove]
 	ASSERT CANNOT_MOVE == $ff
 	inc a
-	jp z, ExecutePlayerMoveDone ; if the player cannot move, skip most of their turn
+	jr nz, .canMove
+; Player cannot move (trapped). Still process status conditions so
+; sleep/freeze counters decrement (fixes Trapping sleep glitch).
+	call CheckPlayerStatusConditions
+	jp ExecutePlayerMoveDone
+.canMove
 	xor a
 	ld [wMoveMissed], a
 	ld [wMonIsDisobedient], a
@@ -3527,6 +3669,8 @@ CheckPlayerStatusConditions:
 	call PrintText
 .sleepDone
 	xor a
+	ld [wDamage], a ; fix: clear stale damage to prevent Counter own-damage reflection
+	ld [wDamage + 1], a
 	ld [wPlayerUsedMove], a
 	ld hl, ExecutePlayerMoveDone ; player can't move this turn
 	jp .returnToHL
@@ -3537,6 +3681,8 @@ CheckPlayerStatusConditions:
 	ld hl, IsFrozenText
 	call PrintText
 	xor a
+	ld [wDamage], a ; fix: clear stale damage to prevent Counter own-damage reflection
+	ld [wDamage + 1], a
 	ld [wPlayerUsedMove], a
 	ld hl, ExecutePlayerMoveDone ; player can't move this turn
 	jp .returnToHL
@@ -3545,6 +3691,9 @@ CheckPlayerStatusConditions:
 	ld a, [wEnemyBattleStatus1]
 	bit USING_TRAPPING_MOVE, a ; is enemy using a multi-turn move like wrap?
 	jp z, .FlinchedCheck
+; fix: clear player's recharge flag — trap replaces recharge turn
+	ld hl, wPlayerBattleStatus2
+	res NEEDS_TO_RECHARGE, [hl]
 	ld hl, CantMoveText
 	call PrintText
 	ld hl, ExecutePlayerMoveDone ; player can't move this turn
@@ -3638,8 +3787,9 @@ CheckPlayerStatusConditions:
 .MonHurtItselfOrFullyParalysed
 	ld hl, wPlayerBattleStatus1
 	ld a, [hl]
-	; clear bide, thrashing, charging up, and trapping moves such as warp (already cleared for confusion damage)
-	and ~((1 << STORING_ENERGY) | (1 << THRASHING_ABOUT) | (1 << CHARGING_UP) | (1 << USING_TRAPPING_MOVE))
+	; clear bide, thrashing, charging up, invulnerable, and trapping moves (already cleared for confusion damage)
+	; fix: also clear INVULNERABLE so Fly/Dig can't leave the mon permanently untargetable
+	and ~((1 << STORING_ENERGY) | (1 << THRASHING_ABOUT) | (1 << CHARGING_UP) | (1 << USING_TRAPPING_MOVE) | (1 << INVULNERABLE))
 	ld [hl], a
 	ld a, [wPlayerMoveEffect]
 	cp FLY_EFFECT
@@ -3654,6 +3804,12 @@ CheckPlayerStatusConditions:
 	ld a, STATUS_AFFECTED_ANIM
 	call PlayMoveAnimation
 .NotFlyOrChargeEffect
+; fix: clear stale damage after full paralysis or confusion self-hit
+; to prevent Counter own-damage reflection
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Counter_glitches
+	xor a
+	ld [wDamage], a
+	ld [wDamage + 1], a
 	ld hl, ExecutePlayerMoveDone
 	jp .returnToHL ; if using a two-turn move, we need to recharge the first turn
 
@@ -3704,6 +3860,14 @@ CheckPlayerStatusConditions:
 	ld [hl], a
 	ld a, BIDE
 	ld [wPlayerMoveNum], a
+; fix: Bide should miss against invulnerable target (Fly/Dig)
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Bide_errors
+	ld a, [wEnemyBattleStatus1]
+	bit INVULNERABLE, a
+	jr z, .playerBideNotBlocked
+	ld a, 1
+	ld [wMoveMissed], a
+.playerBideNotBlocked
 	ld hl, HandleIfPlayerMoveMissed ; skip damage calculation, DecrementPP and MoveHitTest
 	jp .returnToHL
 
@@ -3890,7 +4054,8 @@ HandleSelfConfusionDamage:
 	call DrawPlayerHUDAndHPBar
 	xor a
 	ldh [hWhoseTurn], a
-	jp ApplyDamageToPlayerPokemon
+	ld hl, wDamage + 1
+	jp ApplyDamageToPlayerPokemonDirect
 
 INCLUDE "engine/battle/used_move_text.asm"
 
@@ -3921,9 +4086,8 @@ PrintMoveFailureText:
 	ret nz
 
 	; if you get here, the mon used jump kick or hi jump kick and missed
-	ld hl, wDamage ; since the move missed, wDamage will always contain 0 at this point.
-	                ; Thus, recoil damage will always be equal to 1
-	                ; even if it was intended to be potential damage/8.
+	; fix: read saved pre-miss damage instead of zeroed wDamage
+	ld hl, wJumpKickMissDamage
 	ld a, [hli]
 	ld b, [hl]
 	srl a
@@ -3932,9 +4096,10 @@ PrintMoveFailureText:
 	rr b
 	srl a
 	rr b
-	ld [hl], b
-	dec hl
+	; store crash damage (damage/8) in wDamage for ApplyDamage
+	ld hl, wDamage
 	ld [hli], a
+	ld [hl], b
 	or b
 	jr nz, .applyRecoil
 	inc a
@@ -3947,9 +4112,11 @@ PrintMoveFailureText:
 	ldh a, [hWhoseTurn]
 	and a
 	jr nz, .enemyTurn
-	jp ApplyDamageToPlayerPokemon
+	ld hl, wDamage + 1
+	jp ApplyDamageToPlayerPokemonDirect
 .enemyTurn
-	jp ApplyDamageToEnemyPokemon
+	ld hl, wDamage + 1
+	jp ApplyDamageToEnemyPokemonDirect
 
 AttackMissedText:
 	text_far _AttackMissedText
@@ -4294,7 +4461,12 @@ GetDamageVarsForPlayerAttack:
 	rr c
 	srl b
 	rr c
-; defensive stat can actually end up as 0, leading to a division by 0 freeze during damage calculation
+; fix: clamp defense to minimum 1 to prevent division by 0 freeze
+	ld a, c
+	and a
+	jr nz, .defNonZero
+	inc c
+.defNonZero
 ; hl /= 4 (scale player's offensive stat)
 	srl h
 	rr l
@@ -4407,7 +4579,12 @@ GetDamageVarsForEnemyAttack:
 	rr c
 	srl b
 	rr c
-; defensive stat can actually end up as 0, leading to a division by 0 freeze during damage calculation
+; fix: clamp defense to minimum 1 to prevent division by 0 freeze
+	ld a, c
+	and a
+	jr nz, .defNonZero
+	inc c
+.defNonZero
 ; hl /= 4 (scale enemy's offensive stat)
 	srl h
 	rr l
@@ -4682,16 +4859,17 @@ CriticalHitTest:
 	dec hl
 	ld c, [hl]                   ; read move id
 	ld a, [de]
-	bit GETTING_PUMPED, a        ; test for focus energy
-	jr nz, .focusEnergyUsed      ; bug: using focus energy causes a shift to the right instead of left,
-	                             ; resulting in 1/4 the usual crit chance
-	sla b                        ; (effective (base speed/2)*2)
-	jr nc, .noFocusEnergyUsed
-	ld b, $ff                    ; cap at 255/256
-	jr .noFocusEnergyUsed
-.focusEnergyUsed
-	srl b
-.noFocusEnergyUsed
+	bit GETTING_PUMPED, a        ; test for focus energy / dire hit
+	jr z, .noFocusEnergy
+	; Focus Energy active: ×2 here → quadruples the final crit rate
+	; (base_speed/2 * 2 = base_speed at this point, then ×4 or ÷2 below)
+	sla b
+	jr nc, .afterFocusCheck
+	ld b, $ff                    ; cap at 255
+	jr .afterFocusCheck
+.noFocusEnergy
+	srl b                        ; no Focus Energy: ÷2 (intended normal rate)
+.afterFocusCheck
 	ld hl, HighCriticalMoves     ; table of high critical hit moves
 .Loop
 	ld a, [hli]                  ; read move from move table
@@ -4710,12 +4888,16 @@ CriticalHitTest:
 	jr nc, .SkipHighCritical
 	ld b, $ff
 .SkipHighCritical
+	ld a, b
+	inc a                        ; optimization: 1 byte vs `cp $FF` (2 bytes); Z iff b == $FF
+	jr z, .criticalHit           ; crit rate 255 → always crit (fixes 1/256 crit miss bug)
 	call BattleRandom            ; generates a random value, in "a"
 	rlc a
 	rlc a
 	rlc a
 	cp b                         ; check a against calculated crit rate
 	ret nc                       ; no critical hit if no borrow
+.criticalHit
 	ld a, $1
 	ld [wCriticalHitOrOHKO], a   ; set critical hit flag
 	ret
@@ -4724,21 +4906,23 @@ INCLUDE "data/battle/critical_hit_moves.asm"
 
 ; function to determine if Counter hits and if so, how much damage it does
 HandleCounterMove:
-; The variables checked by Counter are updated whenever the cursor points to a new move in the battle selection menu.
-; This is irrelevant for the opponent's side outside of link battles, since the move selection is controlled by the AI.
-; However, in the scenario where the player switches out and the opponent uses Counter,
-; the outcome may be affected by the player's actions in the move selection menu prior to switching the Pokemon.
-; This might also lead to desync glitches in link battles.
+; fix: Check wUsedMove (set when "[Mon] used [Move]!" prints) instead of wSelectedMove
+; (polluted by cursor movement in the move selection menu). This prevents link battle
+; desynchronization when the player moves the cursor to a different move type then switches.
+; The attacker check (am I using Counter?) still uses wSelectedMove since the attacker
+; has confirmed Counter from the menu but hasn't executed it yet (wUsedMove not set).
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Counter_glitches
+; https://glitchcity.wiki/wiki/Counter_glitches_(Generation_I)
 
 	ldh a, [hWhoseTurn] ; whose turn
 	and a
 ; player's turn
-	ld hl, wEnemySelectedMove
+	ld hl, wEnemyUsedMove ; fix: was wEnemySelectedMove (cursor-polluted)
 	ld de, wEnemyMovePower
 	ld a, [wPlayerSelectedMove]
 	jr z, .next
 ; enemy's turn
-	ld hl, wPlayerSelectedMove
+	ld hl, wPlayerUsedMove ; fix: was wPlayerSelectedMove (cursor-polluted)
 	ld de, wPlayerMovePower
 	ld a, [wEnemySelectedMove]
 .next
@@ -4748,11 +4932,11 @@ HandleCounterMove:
 	ld [wMoveMissed], a ; initialize the move missed variable to true (it is set to false below if the move hits)
 	ld a, [hl]
 	cp COUNTER
-	ret z ; miss if the opponent's last selected move is Counter.
+	ret z ; miss if the opponent's last used move is Counter.
 	ld a, [de]
 	and a
-	ret z ; miss if the opponent's last selected move's Base Power is 0.
-; check if the move the target last selected was Normal or Fighting type
+	ret z ; miss if the opponent's last used move's Base Power is 0.
+; check if the move the target last used was Normal or Fighting type
 	inc de
 	ld a, [de]
 	and a ; normal type
@@ -4839,6 +5023,12 @@ ApplyAttackToEnemyPokemon:
 	srl a
 	add b
 	ld b, a ; b = level * 1.5
+; fix: clamp b to minimum 2 so the range [1, b) is non-empty.
+; Without this, levels 0, 1, or 171 (byte overflow) cause an infinite loop.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Psywave_infinite_loop
+	cp 2
+	jr nc, .loop
+	ld b, 2
 ; loop until a random number in the range [1, b) is found
 .loop
 	call BattleRandom
@@ -4864,6 +5054,7 @@ ApplyDamageToEnemyPokemon:
 	ld a, [wEnemyBattleStatus2]
 	bit HAS_SUBSTITUTE_UP, a ; does the enemy have a substitute?
 	jp nz, AttackSubstitute
+ApplyDamageToEnemyPokemonDirect:
 ; subtract the damage from the pokemon's current HP
 ; also, save the current HP at wHPBarOldHP
 	ld a, [hld]
@@ -4958,11 +5149,18 @@ ApplyAttackToPlayerPokemon:
 	srl a
 	add b
 	ld b, a ; b = attacker's level * 1.5
-; loop until a random number in the range [0, b) is found
-; this differs from the range when the player attacks, which is [1, b)
-; it's possible for the enemy to do 0 damage with Psywave, but the player always does at least 1 damage
+; fix: clamp b to minimum 2 so the range [1, b) is non-empty.
+; Without this, levels 0, 1, or 171 (byte overflow) cause an infinite loop.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Psywave_infinite_loop
+	cp 2
+	jr nc, .loop
+	ld b, 2
+; fix: reject 0 damage to match the player's Psywave [1, b) range
+; (without this, 0 damage on one side but not the other desyncs link battles)
 .loop
 	call BattleRandom
+	and a
+	jr z, .loop
 	cp b
 	jr nc, .loop
 	ld b, a
@@ -4983,6 +5181,7 @@ ApplyDamageToPlayerPokemon:
 	ld a, [wPlayerBattleStatus2]
 	bit HAS_SUBSTITUTE_UP, a ; does the player have a substitute?
 	jp nz, AttackSubstitute
+ApplyDamageToPlayerPokemonDirect:
 ; subtract the damage from the pokemon's current HP
 ; also, save the current HP at wHPBarOldHP and the new HP at wHPBarNewHP
 	ld a, [hld]
@@ -5076,8 +5275,14 @@ AttackSubstitute:
 	jr z, .nullifyEffect
 	ld hl, wEnemyMoveEffect ; value for enemy's turn
 .nullifyEffect
+; fix: don't nullify Explosion/Self-Destruct effect when substitute breaks.
+; Without this, the user survives and their sprite vanishes.
+	ld a, [hl]
+	cp EXPLODE_EFFECT
+	jr z, .dontNullify
 	xor a
 	ld [hl], a ; zero the effect of the attacker's move
+.dontNullify
 	jp DrawHUDsAndHPBars
 
 SubstituteTookDamageText:
@@ -5239,6 +5444,18 @@ IncrementMovePP:
 	ld h, d
 	ld l, e
 	add hl, bc
+; Skip party PP increment if transformed (battle PP and party PP are
+; independent during Transform). Mirrors the check in DecrementPP.
+	push hl
+	ld hl, wPlayerBattleStatus3
+	ldh a, [hWhoseTurn]
+	and a
+	jr z, .checkTransformed
+	ld hl, wEnemyBattleStatus3
+.checkTransformed
+	bit TRANSFORMED, [hl]
+	pop hl
+	ret nz ; return if transformed — don't touch party PP
 	ldh a, [hWhoseTurn]
 	and a
 	ld a, [wPlayerMonNumber] ; value for player turn
@@ -5325,9 +5542,23 @@ AdjustDamageForMoveType:
 	inc hl
 	ld a, [wDamageMultipliers]
 	and 1 << BIT_STAB_DAMAGE
-	ld b, a
+	ld b, a                    ; b = STAB bit (bit 7)
 	ld a, [hl] ; a = damage multiplier
 	ldh [hMultiplier], a
+	; fix: accumulate effectiveness multiplicatively instead of overwriting
+	; only 0 (immune), 5 (NVE ×0.5), or 20 (SE ×2) appear in TypeEffects table
+	and a
+	jr z, .gotMultiplier       ; immune: a=0 → overwrite accumulated to 0
+	ld c, a                    ; c = new effectiveness (5 or 20)
+	ld a, [wDamageMultipliers]
+	and EFFECTIVENESS_MASK     ; accumulated effectiveness (sans STAB)
+	bit 4, c                   ; bit 4 is set in 20 ($14), clear in 5 ($05)
+	jr z, .halveEffectiveness
+	sla a                      ; super effective: double accumulated
+	jr .gotMultiplier
+.halveEffectiveness
+	srl a                      ; not very effective: halve accumulated
+.gotMultiplier
 	add b
 	ld [wDamageMultipliers], a
 	xor a
@@ -5349,8 +5580,16 @@ AdjustDamageForMoveType:
 	ld [hl], a
 	or b ; is damage 0?
 	jr nz, .skipTypeImmunity
-; if damage is 0, make the move miss
-; this only occurs if a move that would do 2 or 3 damage is 0.25x effective against the target
+; damage is 0: either the target is immune (effectiveness = 0)
+; or the move is 0.25x effective and base damage (2 or 3) rounded to 0
+	ld a, [wDamageMultipliers]
+	and EFFECTIVENESS_MASK
+	jr z, .typeImmunity
+; fix: 0.25x rounding to 0 — clamp damage to minimum 1 instead of missing
+	ld [hl], 1 ; hl points at wDamage+1 (low byte)
+	jr .skipTypeImmunity
+.typeImmunity
+; type immune: make the move miss
 	inc a
 	ld [wMoveMissed], a
 .skipTypeImmunity
@@ -5438,10 +5677,10 @@ MoveHitTest:
 	ld a, [de]
 	cp SWIFT_EFFECT
 	ret z ; Swift never misses (this was fixed from the Japanese versions)
-	call CheckTargetSubstitute ; substitute check (note that this overwrites a)
+	call CheckTargetSubstitute ; substitute check
 	jr z, .checkForDigOrFlyStatus
-; The fix for Swift broke this code. It's supposed to prevent HP draining moves from working on Substitutes.
-; Since CheckTargetSubstitute overwrites a with either $00 or $01, it never works.
+	; fix: reload move effect — CheckTargetSubstitute clobbers A with hWhoseTurn
+	ld a, [de]
 	cp DRAIN_HP_EFFECT
 	jp z, .moveMissed
 	cp DREAM_EATER_EFFECT
@@ -5509,17 +5748,61 @@ MoveHitTest:
 	ld a, [wEnemyMoveAccuracy]
 	ld b, a
 .doAccuracyCheck
-; if the random number generated is greater than or equal to the scaled accuracy, the move misses
-; note that this means that even the highest accuracy is still just a 255/256 chance, not 100%
+; --- Accuracy check with optimal rounding ---
+;
+; Background:
+;   Move accuracy is stored as a byte N = floor(P * 255 / 100), where P is the
+;   intended hit percentage (e.g. P=95 → N=242). After CalcHitChance applies
+;   accuracy/evasion modifiers, the result is clamped to [1, 255].
+;
+;   The ideal hit probability is N/255, but BattleRandom produces values 0–255
+;   (256 outcomes), so we must round to either:
+;     N/256     (hit when random <  N) — undershoots by N/(256*255)
+;     (N+1)/256 (hit when random <= N) — overshoots by (255-N)/(256*255)
+;
+;   The crossover where both errors are equal is N = 127.5, so:
+;     N >= 128 (bit 7 set):  (N+1)/256 is closer to N/255 → use <=
+;     N <  128 (bit 7 clear): N/256 is closer to N/255    → use <
+;
+; Examples:
+;   P=95%, N=242: ideal=94.90%, <=gives 94.92% (err 0.02%), <gives 94.53% (err 0.37%)
+;   P=30%, N=76:  ideal=29.80%, <gives 29.69% (err 0.12%), <=gives 30.08% (err 0.28%)
+;
+; Original bug (Gen 1):
+;   Used `random < N` for all values, so N=255 gave 255/256 ≈ 99.6% instead of 100%.
+;   See: https://github.com/pret/pokered/wiki/Fix-the-1-in-255-miss-bug
+;
+; Our fix:
+;   N = 255 → always hit (bypasses RNG entirely)
+;   N >= 128, random == N → hit  (better N/255 approximation)
+;   N <  128, random == N → miss (better N/255 approximation)
+
+	; b = scaled move accuracy (set by caller)
+	ld a, b
+	inc a ; optimization: 1 byte vs `cp $FF` (2 bytes); Z iff b == $FF
+	ret z ; accuracy is 255 → always hit (fixes the 1/256 miss bug)
+
 	call BattleRandom
 	cp b
-	jr nc, .moveMissed
+	jr c, .accuracyHit   ; random < accuracy → hit (all N values)
+	jr nz, .moveMissed   ; random > accuracy → miss (all N values)
+	; random == accuracy → pick the rounding closer to N/255:
+	bit 7, b
+	jr z, .moveMissed    ; accuracy < 128 → miss (N/256 is closer to N/255)
+.accuracyHit             ; accuracy >= 128 → hit  ((N+1)/256 is closer to N/255)
 	ret
 .moveMissed
+; fix: save wDamage before zeroing so Jump Kick/Hi Jump Kick crash damage
+; can use the real calculated damage instead of always getting 1 HP.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Jump_Kick_and_Hi_Jump_Kick.27s_crash_damage
+	ld hl, wDamage
+	ld a, [hli]
+	ld [wJumpKickMissDamage], a
+	ld a, [hl]
+	ld [wJumpKickMissDamage + 1], a
 	xor a
-	ld hl, wDamage ; zero the damage
-	ld [hli], a
-	ld [hl], a
+	ld [hld], a ; zero wDamage + 1
+	ld [hl], a  ; zero wDamage
 	inc a
 	ld [wMoveMissed], a
 	ldh a, [hWhoseTurn]
@@ -5648,7 +5931,12 @@ ExecuteEnemyMove:
 	ld a, [wEnemySelectedMove]
 	ASSERT CANNOT_MOVE == $ff
 	inc a
-	jp z, ExecuteEnemyMoveDone
+	jr nz, .canMove
+; Enemy cannot move (trapped). Still process status conditions so
+; sleep/freeze counters decrement (mirrors player-side fix).
+	call CheckEnemyStatusConditions
+	jp ExecuteEnemyMoveDone
+.canMove
 	call PrintGhostText
 	jp z, ExecuteEnemyMoveDone
 	ld a, [wLinkState]
@@ -5689,6 +5977,11 @@ EnemyCanExecuteChargingMove:
 	res CHARGING_UP, [hl] ; no longer charging up for attack
 	res INVULNERABLE, [hl] ; no longer invulnerable to typical attacks
 	ld a, [wEnemyMoveNum]
+; Clamp glitch move IDs to prevent Super Glitch name overflow.
+	cp NUM_ATTACKS + 1
+	jr c, .validMoveId
+	ld a, STRUGGLE
+.validMoveId
 	ld [wNameListIndex], a
 	ld a, BANK(MoveNames)
 	ld [wPredefBank], a
@@ -5885,6 +6178,8 @@ CheckEnemyStatusConditions:
 	call PrintText
 .sleepDone
 	xor a
+	ld [wDamage], a ; fix: clear stale damage to prevent Counter own-damage reflection
+	ld [wDamage + 1], a
 	ld [wEnemyUsedMove], a
 	ld hl, ExecuteEnemyMoveDone ; enemy can't move this turn
 	jp .enemyReturnToHL
@@ -5894,6 +6189,8 @@ CheckEnemyStatusConditions:
 	ld hl, IsFrozenText
 	call PrintText
 	xor a
+	ld [wDamage], a ; fix: clear stale damage to prevent Counter own-damage reflection
+	ld [wDamage + 1], a
 	ld [wEnemyUsedMove], a
 	ld hl, ExecuteEnemyMoveDone ; enemy can't move this turn
 	jp .enemyReturnToHL
@@ -5901,6 +6198,9 @@ CheckEnemyStatusConditions:
 	ld a, [wPlayerBattleStatus1]
 	bit USING_TRAPPING_MOVE, a ; is the player using a multi-turn attack like warp
 	jp z, .checkIfFlinched
+; fix: clear enemy's recharge flag — trap replaces recharge turn
+	ld hl, wEnemyBattleStatus2
+	res NEEDS_TO_RECHARGE, [hl]
 	ld hl, CantMoveText
 	call PrintText
 	ld hl, ExecuteEnemyMoveDone ; enemy can't move this turn
@@ -6001,7 +6301,8 @@ CheckEnemyStatusConditions:
 	call PlayMoveAnimation
 	ld a, $1
 	ldh [hWhoseTurn], a
-	call ApplyDamageToEnemyPokemon
+	ld hl, wDamage + 1
+	call ApplyDamageToEnemyPokemonDirect
 	jr .monHurtItselfOrFullyParalysed
 .checkIfTriedToUseDisabledMove
 ; prevents a disabled move that was selected before being disabled from being used
@@ -6026,8 +6327,9 @@ CheckEnemyStatusConditions:
 .monHurtItselfOrFullyParalysed
 	ld hl, wEnemyBattleStatus1
 	ld a, [hl]
-	; clear bide, thrashing about, charging up, and multi-turn moves such as warp
-	and ~((1 << STORING_ENERGY) | (1 << THRASHING_ABOUT) | (1 << CHARGING_UP) | (1 << USING_TRAPPING_MOVE))
+	; clear bide, thrashing about, charging up, invulnerable, and multi-turn moves
+	; fix: also clear INVULNERABLE so Fly/Dig can't leave the mon permanently untargetable
+	and ~((1 << STORING_ENERGY) | (1 << THRASHING_ABOUT) | (1 << CHARGING_UP) | (1 << USING_TRAPPING_MOVE) | (1 << INVULNERABLE))
 	ld [hl], a
 	ld a, [wEnemyMoveEffect]
 	cp FLY_EFFECT
@@ -6041,6 +6343,11 @@ CheckEnemyStatusConditions:
 	ld a, STATUS_AFFECTED_ANIM
 	call PlayMoveAnimation
 .notFlyOrChargeEffect
+; fix: clear stale damage after full paralysis or confusion self-hit
+; to prevent Counter own-damage reflection
+	xor a
+	ld [wDamage], a
+	ld [wDamage + 1], a
 	ld hl, ExecuteEnemyMoveDone
 	jp .enemyReturnToHL ; if using a two-turn move, enemy needs to recharge the first turn
 .checkIfUsingBide
@@ -6090,6 +6397,13 @@ CheckEnemyStatusConditions:
 	ld [hl], a
 	ld a, BIDE
 	ld [wEnemyMoveNum], a
+; fix: Bide should miss against invulnerable target (Fly/Dig)
+	ld a, [wPlayerBattleStatus1]
+	bit INVULNERABLE, a
+	jr z, .enemyBideNotBlocked
+	ld a, 1
+	ld [wMoveMissed], a
+.enemyBideNotBlocked
 	call SwapPlayerAndEnemyLevels
 	ld hl, HandleIfEnemyMoveMissed ; skip damage calculation, DecrementPP and MoveHitTest
 	jp .enemyReturnToHL
@@ -6163,6 +6477,11 @@ GetCurrentMove:
 	jr nz, .selected
 	ld a, [wPlayerSelectedMove]
 .selected
+; Clamp glitch move index for both name lookup and Moves table read.
+	cp NUM_ATTACKS + 1
+	jr c, .validMoveId
+	ld a, STRUGGLE
+.validMoveId
 	ld [wNameListIndex], a
 	dec a
 	ld hl, Moves
@@ -6316,15 +6635,27 @@ LoadEnemyMonData:
 	ld de, wEnemyMonNick
 	ld bc, NAME_LENGTH
 	call CopyData
+; fix: don't mark species as seen in Pokédex during ghost battles — the player
+; hasn't identified the Pokémon yet (no Silph Scope).
+	call IsGhostBattle
+	jr z, .skipPokedexSeen
 	ld a, [wEnemyMonSpecies2]
 	ld [wPokedexNum], a
 	predef IndexToPokedex
 	ld a, [wPokedexNum]
+; fix: skip Pokédex seen flag for invalid dex numbers (item duplication glitch).
+; IndexToPokedex returns 0 for glitch species. Without this guard, dec a wraps
+; to 255, and FlagAction sets bit 255 of wPokedexSeen — 12 bytes past the
+; array, into wBagItems (6th item quantity), adding 128 to it.
+	and a
+	jr z, .skipInvalidDex
 	dec a
 	ld c, a
 	ld b, FLAG_SET
 	ld hl, wPokedexSeen
 	predef FlagActionPredef ; mark this mon as seen in the pokedex
+.skipInvalidDex
+.skipPokedexSeen
 	ld hl, wEnemyMonLevel
 	ld de, wEnemyMonUnmodifiedLevel
 	ld bc, 1 + NUM_STATS * 2

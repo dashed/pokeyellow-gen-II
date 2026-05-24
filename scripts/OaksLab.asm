@@ -123,6 +123,7 @@ OaksLabFollowedOakScript:
 	call SetSpriteFacingDirectionAndDelay
 	ld hl, wStatusFlags7
 	res BIT_NO_MAP_MUSIC, [hl]
+	call DelayFrame
 	call PlayDefaultMusic
 
 	ld a, SCRIPT_OAKSLAB_OAK_CHOOSE_MON_SPEECH
@@ -814,6 +815,11 @@ OaksLabOak1Text:
 	ld a, [wNumSetBits]
 	cp 2
 	jr c, .check_for_poke_balls
+; fix: also check that player actually has the Pokédex (Pokédex assumption glitch).
+; Without this, having >= 2 owned species before receiving the Pokédex causes
+; Oak to show the Dex rating instead of accepting Oak's Parcel, blocking progress.
+	CheckEvent EVENT_GOT_POKEDEX
+	jr z, .check_for_poke_balls
 .already_got_poke_balls
 	ld hl, .HowIsYourPokedexComingText
 	call PrintText
@@ -824,7 +830,7 @@ OaksLabOak1Text:
 .check_for_poke_balls
 	ld b, POKE_BALL
 	call IsItemInBag
-	jr nz, .come_see_me_sometimes
+	jp nz, .come_see_me_sometimes
 	ld hl, wPokedexOwned
 	ld b, wPokedexOwnedEnd - wPokedexOwned
 	call CountSetBits
@@ -866,11 +872,21 @@ OaksLabOak1Text:
 	call PrintText
 	jr .done
 .give_poke_balls
-	CheckAndSetEvent EVENT_GOT_POKEBALLS_FROM_OAK
+	CheckEvent EVENT_GOT_POKEBALLS_FROM_OAK
 	jr nz, .come_see_me_sometimes
 	lb bc, POKE_BALL, 5
 	call GiveItem
+; fix: check bag space before confirming Poké Balls received.
+; Without this, full bag silently eats the items while the text
+; claims they were given, and EVENT_GOT_POKEBALLS_FROM_OAK was
+; already set by CheckAndSetEvent — permanently losing them.
+	jr nc, .no_room_for_pokeballs
+	SetEvent EVENT_GOT_POKEBALLS_FROM_OAK
 	ld hl, .GivePokeballsText
+	call PrintText
+	jr .done
+.no_room_for_pokeballs
+	ld hl, .NoRoomForPokeballsText
 	call PrintText
 	jr .done
 .come_see_me_sometimes
@@ -905,6 +921,10 @@ OaksLabOak1Text:
 	text_far _OaksLabOak1ReceivedPokeballsText
 	sound_get_key_item
 	text_far _OaksLabGivePokeballsExplanationText
+	text_end
+
+.NoRoomForPokeballsText:
+	text_far _OaksLabNoRoomForPokeballsText
 	text_end
 
 .ComeSeeMeSometimesText:

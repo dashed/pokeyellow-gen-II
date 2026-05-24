@@ -125,6 +125,18 @@ PlayShootingStar:
 	; A `call LoadPresentsGraphic` here was removed in localization
 	pop af
 	jr c, .next ; skip the delay if the user interrupted the animation
+
+	; https://bulbapedia.bulbagarden.net/wiki/Game_intro
+	;  restore the "PRESENTS" under the Game Freak logo in the intro
+	hlcoord 7, 11
+	ld a, $67 ; load $67 into reg a - starting tile ID
+	ld c, $06 ; number of tiles
+	.loop
+		ld [hli], a
+		inc a
+		dec c
+		jr nz, .loop
+
 	ld c, 40
 	call DelayFrames
 .next

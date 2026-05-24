@@ -6,6 +6,13 @@ CalcLevelFromExperience::
 	ld d, $1 ; init level to 1
 .loop
 	inc d ; increment level
+; fix: cap at MAX_LEVEL to prevent infinite loop from corrupted experience
+; (Experience PC withdrawal freeze). Without this, corrupted experience
+; values (e.g., Medium Slow underflow → 16,777,162) cause d to wrap past
+; 255 and loop indefinitely, softlocking the game when withdrawing from PC.
+	ld a, d
+	cp MAX_LEVEL + 1
+	jr z, .done
 	call CalcExperience
 	push hl
 	ld hl, wLoadedMonExp + 2 ; current exp
@@ -24,6 +31,7 @@ CalcLevelFromExperience::
 	sbc c
 	pop hl
 	jr nc, .loop ; if exp needed for level d is not greater than exp, try the next level
+.done
 	dec d ; since the exp was too high on the last loop iteration, go back to the previous value and return
 	ret
 
@@ -134,6 +142,14 @@ CalcExperience::
 	ldh a, [hExperience]
 	adc b
 	ldh [hExperience], a
+; fix: clamp underflowed experience to 0 (prevents Medium Slow level 1 → 100 jump)
+; legitimate exp values never exceed ~1.25M ($1312D0), so bit 7 set = underflow
+	bit 7, a
+	ret z ; return if non-negative
+	xor a
+	ldh [hExperience], a
+	ldh [hExperience + 1], a
+	ldh [hExperience + 2], a
 	ret
 
 ; calculates d*d

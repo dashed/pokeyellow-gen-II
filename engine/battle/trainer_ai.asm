@@ -263,6 +263,11 @@ ReadMove:
 	push de
 	push bc
 	dec a
+; Clamp glitch move index to prevent out-of-bounds Moves table read.
+	cp NUM_ATTACKS
+	jr c, .validMoveId
+	xor a
+.validMoveId
 	ld hl, Moves
 	ld bc, MOVE_LENGTH
 	call AddNTimes
@@ -351,10 +356,8 @@ CooltrainerMAI:
 	jp AIUseXAttack
 
 CooltrainerFAI:
-	; The intended 25% chance to consider switching will not apply.
-	; Uncomment the line below to fix this.
 	cp 25 percent + 1
-	; ret nc
+	ret nc ; fix: restore intended 25% chance gate (was commented out)
 	ld a, 10
 	call AICheckIfHPBelowFraction
 	jp c, AIUseHyperPotion
@@ -558,6 +561,9 @@ AIPrintItemUseAndUpdateHPBar:
 	xor a
 	ld [wHPBarType], a
 	predef UpdateHPBar2
+	; fallthrough
+DrawEnemyHUDAndDecrementAICount:
+	callfar DrawEnemyHUDAndHPBar
 	jp DecrementAICount
 
 AISwitchIfEnoughMons:
@@ -629,7 +635,9 @@ AIUseFullHeal:
 	call AIPlayRestoringSFX
 	call AICureStatus
 	ld a, FULL_HEAL
-	jp AIPrintItemUse
+	ld [wAIItem], a
+	call AIPrintItemUse_
+	jp DrawEnemyHUDAndDecrementAICount
 
 AICureStatus:
 ; cures the status of enemy's active pokemon

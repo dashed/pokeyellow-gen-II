@@ -119,6 +119,11 @@ _OaksLabGivePokeballsExplanationText::
 	cont "have to be lucky!"
 	done
 
+_OaksLabNoRoomForPokeballsText::
+	text "You have no more"
+	line "room for items!"
+	done
+
 _OaksLabOak1ComeSeeMeSometimesText::
 	text "OAK: Come see me"
 	line "sometimes."

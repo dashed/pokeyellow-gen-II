@@ -25,8 +25,6 @@ DisplayElevatorFloorMenu:
 	ld a, b
 	ld [wListScrollOffset], a
 	ret c
-	ld hl, wCurrentMapScriptFlags
-	set BIT_CUR_MAP_USED_ELEVATOR, [hl]
 	ld hl, wElevatorWarpMaps
 	ld a, [wWhichPokemon]
 	add a
@@ -37,6 +35,15 @@ DisplayElevatorFloorMenu:
 	ld b, a
 	ld a, [hl]
 	ld c, a
+; fix: skip elevator if the selected floor is the one we came from.
+; Without this, the shake animation plays and the player "warps" to the
+; same map they entered from, wasting time.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_overworld_glitches_in_Generation_I
+	ld a, [wWarpedFromWhichMap]
+	cp c
+	ret z ; same floor — do nothing
+	ld hl, wCurrentMapScriptFlags
+	set BIT_CUR_MAP_USED_ELEVATOR, [hl]
 	ld hl, wWarpEntries
 	call .UpdateWarp
 

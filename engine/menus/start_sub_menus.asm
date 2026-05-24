@@ -479,6 +479,13 @@ StartMenu_TrainerInfo::
 	predef DrawBadges
 	ld b, SET_PAL_TRAINER_CARD
 	call RunPaletteCommand
+; On DMG with modern IPS LCD mods, the screen can show brief garbage
+; during Trainer Card transitions because the LCD responds faster than
+; the original screen. Delay 3 frames to let data finish loading.
+; Skip on SGB since it handles its own timing.
+	ld a, [wOnSGB]
+	and a
+	call z, Delay3
 	call GBPalNormal
 	call WaitForTextScrollButtonPress
 	call GBPalWhiteOut
@@ -487,6 +494,9 @@ StartMenu_TrainerInfo::
 	call RunDefaultPaletteCommand
 	call ReloadMapData
 	farcall DrawStartMenu ; XXX what difference does this make?
+	ld a, [wOnSGB]
+	and a
+	call z, Delay3
 	call LoadGBPal
 	pop af
 	ldh [hTileAnimations], a
@@ -662,7 +672,7 @@ StartMenu_SaveReset::
 	jp nz, Init
 	predef SaveMenu
 	call LoadScreenTilesFromBuffer2
-	jp HoldTextDisplayOpen
+	jp CloseStartMenu
 
 StartMenu_Option::
 	xor a

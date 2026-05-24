@@ -787,8 +787,7 @@ StopBikeSurf:
 	ld hl, wStatusFlags6
 	bit BIT_DUNGEON_WARP, [hl]
 	ret z
-	call PlayDefaultMusic
-	ret
+	jp PlayDefaultMusic
 
 LoadPlayerSpriteGraphics::
 ; Load sprite graphics based on whether the player is standing, biking, or surfing.
@@ -1582,8 +1581,7 @@ JoypadOverworld::
 	call RunMapScript
 	call Joypad
 	call ForceBikeDown
-	call AreInputsSimulated
-	ret
+	jp AreInputsSimulated
 
 ForceBikeDown::
 	ld a, [wStatusFlags7]
@@ -1982,8 +1980,7 @@ LoadMapData::
 LoadScreenRelatedData::
 	call LoadTileBlockMap
 	call LoadTilesetTilePatternData
-	call LoadCurrentMapView
-	ret
+	jp LoadCurrentMapView
 
 ReloadMapAfterSurfingMinigame::
 	ldh a, [hLoadedROMBank]

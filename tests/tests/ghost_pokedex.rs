@@ -40,24 +40,21 @@ fn rom_bytes_call_is_ghost_battle_before_pokedex_seen() {
     h.select_rom_bank(sym_bank("IsGhostBattle"));
 
     let is_ghost_battle = sym_addr("IsGhostBattle");
-    // `call IsGhostBattle` is 0x1F bytes before .skipPokedexSeen
-    let call_addr = sym_addr("LoadEnemyMonData.skipPokedexSeen") - 0x1F;
+    let skip_pokedex_seen = sym_addr("LoadEnemyMonData.skipPokedexSeen");
+    let lo = (is_ghost_battle & 0xFF) as u8;
+    let hi = (is_ghost_battle >> 8) as u8;
 
-    // Verify `call IsGhostBattle` (CD xx xx) at call site
-    let op = h.read_mem(call_addr);
-    let lo = h.read_mem(call_addr + 1);
-    let hi = h.read_mem(call_addr + 2);
-    assert_eq!(op, 0xCD, "Expected call opcode ($CD), got ${op:02X}");
-    assert_eq!(
-        lo,
-        (is_ghost_battle & 0xFF) as u8,
-        "Expected IsGhostBattle low byte"
-    );
-    assert_eq!(
-        hi,
-        (is_ghost_battle >> 8) as u8,
-        "Expected IsGhostBattle high byte"
-    );
+    // Scan backward from .skipPokedexSeen for `call IsGhostBattle` (CD lo hi).
+    // Uses scanning instead of hardcoded offset so the test works both on the
+    // ghost-battle branch alone and when merged with glitch-safety (which adds
+    // extra bytes between the call and the label).
+    let scan_start = skip_pokedex_seen.saturating_sub(0x30);
+    for addr in scan_start..skip_pokedex_seen {
+        if h.read_mem(addr) == 0xCD && h.read_mem(addr + 1) == lo && h.read_mem(addr + 2) == hi {
+            return;
+        }
+    }
+    panic!("call IsGhostBattle not found in 0x30 bytes before .skipPokedexSeen");
 }
 
 #[test]
@@ -66,21 +63,30 @@ fn rom_bytes_jr_z_targets_skip_pokedex_seen() {
     h.gb.cpu().set_ime(false);
     h.select_rom_bank(sym_bank("IsGhostBattle"));
 
+    let is_ghost_battle = sym_addr("IsGhostBattle");
     let skip_pokedex_seen = sym_addr("LoadEnemyMonData.skipPokedexSeen");
-    // `jr z, .skipPokedexSeen` is 0x1C bytes before .skipPokedexSeen
-    let jr_z_skip = skip_pokedex_seen - 0x1C;
+    let lo = (is_ghost_battle & 0xFF) as u8;
+    let hi = (is_ghost_battle >> 8) as u8;
 
-    // Verify `jr z` (28) at jr_z_skip
-    let jr_op = h.read_mem(jr_z_skip);
-    assert_eq!(jr_op, 0x28, "Expected jr z ($28), got ${jr_op:02X}");
-
-    // Verify offset targets .skipPokedexSeen
-    let offset = h.read_mem(jr_z_skip + 1) as i8;
-    let target = (jr_z_skip + 2).wrapping_add(offset as u16);
-    assert_eq!(
-        target, skip_pokedex_seen,
-        "jr z should target .skipPokedexSeen (${skip_pokedex_seen:04X}), got ${target:04X}"
-    );
+    // Find `call IsGhostBattle`, then verify `jr z, .skipPokedexSeen` follows.
+    let scan_start = skip_pokedex_seen.saturating_sub(0x30);
+    for addr in scan_start..skip_pokedex_seen {
+        if h.read_mem(addr) == 0xCD && h.read_mem(addr + 1) == lo && h.read_mem(addr + 2) == hi {
+            let jr_op = h.read_mem(addr + 3);
+            assert_eq!(
+                jr_op, 0x28,
+                "Expected jr z ($28) after call IsGhostBattle, got ${jr_op:02X}"
+            );
+            let offset = h.read_mem(addr + 4) as i8;
+            let target = (addr + 5).wrapping_add(offset as u16);
+            assert_eq!(
+                target, skip_pokedex_seen,
+                "jr z should target .skipPokedexSeen (${skip_pokedex_seen:04X}), got ${target:04X}"
+            );
+            return;
+        }
+    }
+    panic!("call IsGhostBattle not found in 0x30 bytes before .skipPokedexSeen");
 }
 
 // ─── Behavioral: IsGhostBattle returns ──────────────────────────────

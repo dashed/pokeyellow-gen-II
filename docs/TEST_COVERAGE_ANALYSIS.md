@@ -24,6 +24,7 @@ The test suite achieves **100% fix-level coverage** — every one of the 117 bug
 | Move effect files tested | 7/14 (50%) | +drain, ohko, recoil, haze |
 | Damage pipeline tested | **Covered** (Tier 1 complete) | CalculateDamage, RandomizeDamage, CalcHitChance, type chart |
 | Battle functions tested | **Covered** (Sprint 2 complete) | TryRunningFromBattle, CheckForDisobedience |
+| CI pass rate | 1,135/1,135 (100%) | All tests green after ghost_pokedex.rs fix |
 | Built but unused infrastructure | 2 modules | InputScript DSL, LinkEndpoint |
 
 **Bottom line**: The Tier 1 and Sprint 2 gaps have been closed — the damage pipeline (CalculateDamage, CalcHitChance, RandomizeDamage, type chart, TransformEffect_), escape formula (TryRunningFromBattle), obedience system (CheckForDisobedience), and 4 move effects (drain, OHKO, recoil, haze) now have exhaustive behavioral tests. A shared BattleFixture module reduces future test setup boilerplate. The remaining gaps are overworld behavioral coverage (33 files, all ROM-byte only), move effects (7/14 untested), and glitch safety runtime verification.
@@ -193,6 +194,21 @@ All gym leader AIs (Brock through Giovanni), Elite Four AIs (Lorelei through Lan
 | **Debug utilities** (`tests/src/debug.rs`) | Built, **0 test uses** | Leverage for better test diagnostics |
 | **Cycle benchmarking** | Built, only 5 usages | Expand for performance regression tracking |
 
+### ROM byte test best practice: pattern scanning
+
+ROM byte tests that use hardcoded offsets from labels (e.g., `sym_addr("Label") - 0x1F`) break when other branches add or remove code in the same region. The `ghost_pokedex.rs` tests failed on the merge because `dashed/glitch-safety` added bytes between `call IsGhostBattle` and `.skipPokedexSeen`, invalidating the hardcoded offset.
+
+**Fix**: Scan for the byte pattern in a range instead. Example from `ghost_pokedex.rs` and `zero_damage.rs`:
+```rust
+let scan_start = skip_label.saturating_sub(0x30);
+for addr in scan_start..skip_label {
+    if h.read_mem(addr) == 0xCD && h.read_mem(addr+1) == lo && h.read_mem(addr+2) == hi {
+        return; // found `call Target`
+    }
+}
+```
+This works regardless of intervening code from other branches.
+
 ### Missing infrastructure
 
 | Gap | Impact | Effort |
@@ -352,4 +368,4 @@ Branch placement: Items 1, 3, 4, 5 on `dashed/tests`; Items 2, 6, 7 on `dashed/b
 
 ---
 
-*Analysis produced by 4-agent parallel investigation (fix-auditor, harness-analyzer, coverage-mapper, asm-analyzer). Sprint 1 implemented by 4-agent parallel team (damage-pipeline, type-chart, rng-hitchance, transform-test). Sprint 2 implemented by 4-agent parallel team (escape-formula, disobedience, move-effects, battle-fixture). Updated 2026-05-24.*
+*Analysis produced by 4-agent parallel investigation (fix-auditor, harness-analyzer, coverage-mapper, asm-analyzer). Sprint 1 implemented by 4-agent parallel team (damage-pipeline, type-chart, rng-hitchance, transform-test). Sprint 2 implemented by 4-agent parallel team (escape-formula, disobedience, move-effects, battle-fixture). ghost_pokedex.rs CI fix: pattern scanning replaces hardcoded offsets. Updated 2026-05-24.*

@@ -386,7 +386,7 @@ make rust-check         # Run clippy + fmt-check + test (full CI check)
 
 `RUST_TEST_THREADS` defaults to 4 to limit RAM usage from parallel GameBoy emulator instances. Override with `make test RUST_TEST_THREADS=2`.
 
-**Test stats:** 130 test files, 958 test functions across all branches.
+**Test stats:** 145 test files, 1,135 test functions across all branches.
 
 ### Local Build Verification with Docker
 

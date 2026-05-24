@@ -3,7 +3,7 @@
 Deep investigation into test coverage gaps, infrastructure capabilities, and recommendations for the pokeyellow-gen-II project.
 
 **Date**: 2026-05-24
-**Scope**: All 15 branches (14 feature + dashed/docs), 139 test files, 1,048 test functions
+**Scope**: All 15 branches (14 feature + dashed/docs), 145 test files, 1,135 test functions
 
 ---
 
@@ -16,16 +16,17 @@ The test suite achieves **100% fix-level coverage** — every one of the 117 bug
 | Metric | Value | Assessment |
 |--------|-------|------------|
 | Bug fixes with tests | 117/117 (100%) | Excellent breadth |
-| Tests that execute game code | 318/1,048 (30%) | Improved after Tier 1 |
-| ROM-byte-only tests | 696/1,048 (66%) | Structural, not behavioral |
+| Tests that execute game code | 405/1,135 (36%) | Improved after Sprint 2 |
+| ROM-byte-only tests | 696/1,135 (61%) | Structural, not behavioral |
 | Golden image tests | 2 (0.2%) | Massively underutilized |
-| E2E gameplay tests | 10 (1.0%) | Minimal scenario coverage |
+| E2E gameplay tests | 10 (0.9%) | Minimal scenario coverage |
 | Overworld behavioral tests | 0/241 | Largest remaining gap |
-| Move effect files tested | 3/14 (21%) | transform.asm now covered |
+| Move effect files tested | 7/14 (50%) | +drain, ohko, recoil, haze |
 | Damage pipeline tested | **Covered** (Tier 1 complete) | CalculateDamage, RandomizeDamage, CalcHitChance, type chart |
-| Built but unused infrastructure | 3 modules | InputScript DSL, LinkEndpoint, Debug utils |
+| Battle functions tested | **Covered** (Sprint 2 complete) | TryRunningFromBattle, CheckForDisobedience |
+| Built but unused infrastructure | 2 modules | InputScript DSL, LinkEndpoint |
 
-**Bottom line**: The Tier 1 CRITICAL gap (damage pipeline) has been closed — CalculateDamage, CalcHitChance, RandomizeDamage, the full type chart, and TransformEffect_ now have exhaustive behavioral tests. The remaining gaps are overworld behavioral coverage (33 files, all ROM-byte only), move effects (11/14 untested), and glitch safety runtime verification.
+**Bottom line**: The Tier 1 and Sprint 2 gaps have been closed — the damage pipeline (CalculateDamage, CalcHitChance, RandomizeDamage, type chart, TransformEffect_), escape formula (TryRunningFromBattle), obedience system (CheckForDisobedience), and 4 move effects (drain, OHKO, recoil, haze) now have exhaustive behavioral tests. A shared BattleFixture module reduces future test setup boilerplate. The remaining gaps are overworld behavioral coverage (33 files, all ROM-byte only), move effects (7/14 untested), and glitch safety runtime verification.
 
 ---
 
@@ -57,9 +58,9 @@ Related fixes share test files efficiently (e.g., 3 Counter fixes share `counter
 ## 2. Test Type Distribution
 
 ```
-ROM Byte Validation:  ████████████████████████████████████████  98 files (73%)  696 tests (73%)
-Emulator State Test:  ████████████               30 files (22%)  247 tests (26%)
-E2E Gameplay Test:    ██                          3 files  (2%)   10 tests  (1%)
+ROM Byte Validation:  ████████████████████████████████████████  98 files (67%)  696 tests (61%)
+Emulator State Test:  ██████████████████         37 files (26%)  405 tests (36%)
+E2E Gameplay Test:    ██                          3 files  (2%)   10 tests  (0.9%)
 Golden Image Test:    █                           2 files  (1%)    2 tests  (0.2%)
 Input Script Test:    ▏                           1 file   (1%)    2 tests  (0.2%)
 ```
@@ -79,7 +80,7 @@ Input Script Test:    ▏                           1 file   (1%)    2 tests  (0
 
 | Game System | ROM Byte | Emulator | Golden | E2E | Total Tests |
 |---|---|---|---|---|---|
-| **Battle Engine** | 159 | 183 | 0 | 0 | **342** |
+| **Battle Engine** | 159 | 270 | 0 | 0 | **429** |
 | **Overworld** | 241 | **0** | 0 | 0 | **241** |
 | **Items** | 40 | 35 | 0 | 0 | **75** |
 | **Visual/Cosmetic** | 60 | 5 | 1 | 0 | **66** |
@@ -126,25 +127,21 @@ The following Tier 1 gaps have been closed with 71 new behavioral tests:
 | **Division-by-zero clamp** | `core.asm:4376` | **COVERED** | `division_zero.rs` — +3 behavioral tests: defense=0 clamp verified at runtime |
 | **Zero damage 0.25x clamp** | `core.asm:5471` | **COVERED** | `zero_damage.rs` — +6 behavioral tests: all 3 paths (normal, immune, 0.25x→1) |
 
-### Remaining CRITICAL — Still untested
+### Remaining CRITICAL — Sprint 2 resolved TryRunningFromBattle and CheckForDisobedience
 
-| Function | File | Risk | Why |
+| Function | File | Status | Tests |
 |---|---|---|---|
-| **`TryRunningFromBattle`** | `core.asm:1635` | **CRITICAL** | 119 lines, 15 branches. Complex arithmetic (`playerSpeed*32 / (enemySpeed/4%256) + 30*runAttempts`), overflow-prone, completely untested. |
-| **`CheckForDisobedience`** | `core.asm:4176` | **CRITICAL** | 179 lines, 36 branches. 2nd most branchy function in core.asm. Badge-based obedience thresholds, random outcome selection. Completely untested. |
-| **`SelectEnemyMove`** | `core.asm:3231` | **HIGH** | 93 lines, 18 branches. Move selection with Metronome/Mirror Move handling. |
-| **`GainExperience`** | `experience.asm` | **HIGH** | ~200 lines. Full exp distribution, level-ups, move learning. Never executed in tests. |
+| **`TryRunningFromBattle`** | `core.asm:1635` | **COVERED** | `try_running.rs` — 14 tests: deterministic paths, formula sweep, threshold overflow |
+| **`CheckForDisobedience`** | `core.asm:4176` | **COVERED** | `disobedience.rs` — 21 tests: badge thresholds, OT ID, all outcome paths |
+| **`SelectEnemyMove`** | `core.asm:3231` | **HIGH** | Untested. 93 lines, 18 branches. Move selection with Metronome/Mirror Move. |
+| **`GainExperience`** | `experience.asm` | **HIGH** | Untested. ~200 lines. Full exp distribution, level-ups, move learning. |
 
-### Move Effects: 11 of 14 implementations still untested
+### Move Effects: 7 of 14 implementations still untested
 
-`substitute.asm`, `heal.asm`, and now `transform.asm` have test coverage:
+`substitute.asm`, `heal.asm`, `transform.asm`, `drain_hp.asm`, `one_hit_ko.asm`, `recoil.asm`, and `haze.asm` have test coverage:
 
 | Untested File | Risk | Key Concern |
 |---|---|---|
-| **`drain_hp.asm`** | P1 | HP recovery calculation, substitute interaction |
-| **`one_hit_ko.asm`** | P1 | Speed/level comparison for OHKO moves |
-| **`recoil.asm`** | P1 | Recoil = damage/4. What if damage < 4? |
-| **`haze.asm`** | P1 | Resets ALL stat stages + volatile statuses |
 | **`reflect_light_screen.asm`** | P2 | Defense/special doubling flags |
 | **`leech_seed.asm`** | P2 | Grass immunity, HP drain |
 | **`paralyze.asm`** | P2 | Speed quartering, Electric immunity |
@@ -200,7 +197,7 @@ All gym leader AIs (Brock through Giovanni), Elite Four AIs (Lorelei through Lan
 
 | Gap | Impact | Effort |
 |---|---|---|
-| **BattleFixture** (shared battle setup) | ~50 test files independently set up battle state | Medium — extract common setup into `tests/src/battle.rs` |
+| ~~**BattleFixture**~~ | ~~shared battle setup~~ | **DONE** — `tests/src/battle.rs` with `BattleFixture::new("Label")`, Deref to TestHarness, WRAM helpers |
 | **Navigation helpers** (shared boot/menu) | E2E tests copy-paste `boot_to_main_menu()`, `navigate_oak_speech()` | Low — extract into `tests/src/navigation.rs` |
 | **Tile-level visual assertions** | Golden images are brittle full-screenshot comparisons | Medium — assert specific tile IDs at tilemap coordinates |
 | **SRAM fuzz testing** | No test loads corrupted save data | Medium — random SRAM → boot → verify no crash |
@@ -294,13 +291,13 @@ Branch placement: Items 1, 3, 4, 5 on `dashed/tests`; Items 2, 6, 7 on `dashed/b
 
 ### Phase 2: Coverage depth improvements (next priority)
 
-| # | What | Why | Effort |
+| # | What | Status | Effort |
 |---|---|---|---|
 | 8 | Overworld behavioral tests (top 5 fixes) | 33 files, 241 tests, zero behavioral | High |
 | 9 | Glitch Safety behavioral tests | MissingNo., Super Glitch, ZZAZZ at runtime | Medium |
-| 10 | `TryRunningFromBattle` formula test | Complex arithmetic, overflow-prone | Medium |
-| 11 | `CheckForDisobedience` behavioral test | 36 branches, all untested | Medium |
-| 12 | Move effects: drain, recoil, OHKO, haze | 12/14 files untested | High |
+| 10 | ~~`TryRunningFromBattle` formula test~~ | **DONE** — `try_running.rs` (14 tests) | ~~Medium~~ |
+| 11 | ~~`CheckForDisobedience` behavioral test~~ | **DONE** — `disobedience.rs` (21 tests) | ~~Medium~~ |
+| 12 | ~~Move effects: drain, recoil, OHKO, haze~~ | **DONE** — 4 files (47 tests) | ~~High~~ |
 | 13 | Golden image expansion (battle, overworld) | Only 2 golden tests exist | Medium |
 | 14 | E2E expansion (gym battle, item use, save round-trip) | Current E2E covers only first 5 min | High |
 
@@ -308,7 +305,7 @@ Branch placement: Items 1, 3, 4, 5 on `dashed/tests`; Items 2, 6, 7 on `dashed/b
 
 | # | What | Why | Effort |
 |---|---|---|---|
-| 15 | BattleFixture shared setup module | ~50 files duplicate battle state setup | Medium |
+| 15 | ~~BattleFixture shared setup module~~ | **DONE** — `tests/src/battle.rs` (5 unit tests) | ~~Medium~~ |
 | 16 | Navigation helpers module | E2E tests copy-paste boot sequences | Low |
 | 17 | Virtual time: delay patching | 3-5x E2E speedup | Low |
 | 18 | Virtual time: turbo harness mode | 10-20% faster for all headless tests | Low |
@@ -327,10 +324,13 @@ Branch placement: Items 1, 3, 4, 5 on `dashed/tests`; Items 2, 6, 7 on `dashed/b
 - Pattern: register injection + sweep (reused accuracy.rs pattern)
 - Branch: `dashed/tests` (4 vanilla) + `dashed/battle-bugs` (3 fix-specific)
 
-### Sprint 2: Battle Behavioral Depth (2-3 days)
-- Tasks 10-12: Escape formula, disobedience, move effects
-- Task 15: BattleFixture extraction
-- Expected: 12 new test files, ~100 test functions
+### Sprint 2: Battle Behavioral Depth — **COMPLETE** (2026-05-24)
+- ~~Tasks 10-12: Escape formula, disobedience, move effects~~ **DONE**
+- ~~Task 15: BattleFixture extraction~~ **DONE**
+- 7 new files (6 test + 1 infrastructure), 87 new test functions
+- Pattern: fixture setup + label stepping for display-calling functions
+- Branch: `dashed/tests` (all vanilla function tests + infrastructure)
+- Files: `try_running.rs` (14), `disobedience.rs` (21), `one_hit_ko_effect.rs` (10), `drain_hp_effect.rs` (11), `recoil_effect.rs` (12), `haze_effect.rs` (14), `battle.rs` (5)
 
 ### Sprint 3: Overworld & Glitch Safety (2-3 days)
 - Tasks 8-9: Top overworld fixes + glitch safety behavioral tests
@@ -346,10 +346,10 @@ Branch placement: Items 1, 3, 4, 5 on `dashed/tests`; Items 2, 6, 7 on `dashed/b
 - Tasks 14, 20-21: E2E expansion, link tests, AI tests
 - Expected: 8 new test files, ~40 test functions
 
-### Remaining estimated new tests: ~180 test functions across ~35 files
-### Current test count: 1,048 (up from 958 after Sprint 1)
+### Remaining estimated new tests: ~95 test functions across ~25 files
+### Current test count: 1,135 (up from 1,048 after Sprint 2)
 ### Projected final count: ~1,230 tests
 
 ---
 
-*Analysis produced by 4-agent parallel investigation (fix-auditor, harness-analyzer, coverage-mapper, asm-analyzer). Sprint 1 implemented by 4-agent parallel team (damage-pipeline, type-chart, rng-hitchance, transform-test). Updated 2026-05-24.*
+*Analysis produced by 4-agent parallel investigation (fix-auditor, harness-analyzer, coverage-mapper, asm-analyzer). Sprint 1 implemented by 4-agent parallel team (damage-pipeline, type-chart, rng-hitchance, transform-test). Sprint 2 implemented by 4-agent parallel team (escape-formula, disobedience, move-effects, battle-fixture). Updated 2026-05-24.*

@@ -211,3 +211,80 @@ fn def_non_zero_label_exists_in_both_paths() {
         ".defNonZero should be before .next in enemy path"
     );
 }
+
+// ─── Behavioral tests ──────────────────────────────────────────────
+//
+// These actually execute GetDamageVarsForPlayerAttack and verify the
+// defense clamp works at runtime, not just as ROM bytes.
+
+const TRAP_ADDR_BH: u16 = 0xC100;
+
+/// Run GetDamageVarsForPlayerAttack with the given defense (big-endian)
+/// and a 256+ attack (to trigger the .scaleStats path).
+/// Returns the C register (scaled defense) after the function returns.
+fn run_player_damage_vars(defense_hi: u8, defense_lo: u8) -> u8 {
+    let mut h = TestHarness::new_headless();
+    h.gb.cpu().set_ime(false);
+    h.write_mem(0xFFFF, 0x00);
+    h.gb.set_timer_enabled(false);
+    h.gb.set_serial_enabled(false);
+    h.gb.set_dma_enabled(false);
+    let bank = sym_bank("GetDamageVarsForPlayerAttack");
+    h.select_rom_bank(bank);
+
+    h.write_mem(TRAP_ADDR_BH, 0x00); // NOP
+    h.write_mem(TRAP_ADDR_BH + 1, 0x10); // STOP
+
+    // wPlayerMovePower must be nonzero (otherwise function returns early)
+    h.write_mem(sym_addr("wPlayerMovePower"), 40);
+    // NORMAL type (0x00) = physical attack (below SPECIAL threshold)
+    h.write_mem(sym_addr("wPlayerMoveType"), 0x00);
+    // Enemy defense (big-endian: high byte at wEnemyMonDefense, low at +1)
+    h.write_mem(sym_addr("wEnemyMonDefense"), defense_hi);
+    h.write_mem(sym_addr("wEnemyMonDefense") + 1, defense_lo);
+    // Player attack = 256 (high byte nonzero → triggers .scaleStats)
+    h.write_mem(sym_addr("wBattleMonAttack"), 0x01);
+    h.write_mem(sym_addr("wBattleMonAttack") + 1, 0x00);
+    // No critical hit, no Reflect
+    h.write_mem(sym_addr("wCriticalHitOrOHKO"), 0x00);
+    h.write_mem(sym_addr("wEnemyBattleStatus3"), 0x00);
+    // Level (needed for register E output)
+    h.write_mem(sym_addr("wBattleMonLevel"), 50);
+
+    h.set_sp(0xDFF0);
+    h.push_word(TRAP_ADDR_BH);
+    h.set_pc(sym_addr("GetDamageVarsForPlayerAttack"));
+    h.step_to(TRAP_ADDR_BH);
+
+    h.gb.cpu_i().c
+}
+
+#[test]
+fn behavioral_defense_zero_clamp() {
+    // Defense = 1: bc = [0x00, 0x01]. After >>2: bc = 0 → clamp c to 1.
+    let c = run_player_damage_vars(0x00, 0x01);
+    assert_eq!(
+        c, 1,
+        "Defense 1 after >>2 should be clamped to 1, got {c}"
+    );
+}
+
+#[test]
+fn behavioral_defense_3_clamps_to_1() {
+    // Defense = 3: bc = [0x00, 0x03]. After >>2: 3/4 = 0 → clamp c to 1.
+    let c = run_player_damage_vars(0x00, 0x03);
+    assert_eq!(
+        c, 1,
+        "Defense 3 after >>2 should be clamped to 1, got {c}"
+    );
+}
+
+#[test]
+fn behavioral_defense_4_no_clamp() {
+    // Defense = 4: bc = [0x00, 0x04]. After >>2: 4/4 = 1 → no clamp needed.
+    let c = run_player_damage_vars(0x00, 0x04);
+    assert_eq!(
+        c, 1,
+        "Defense 4 after >>2 should be 1 (no clamp needed), got {c}"
+    );
+}

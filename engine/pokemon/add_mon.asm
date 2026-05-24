@@ -86,6 +86,9 @@ _AddPartyMon::
 	predef IndexToPokedex
 	pop de
 	ld a, [wPokedexNum]
+; fix: skip Pokédex flags for invalid dex numbers (item duplication glitch).
+	and a
+	jr z, .skipPokedexFlags
 	dec a
 	ld c, a
 	ld b, FLAG_TEST
@@ -102,6 +105,7 @@ _AddPartyMon::
 	pop bc
 	ld hl, wPokedexSeen
 	call FlagAction
+.skipPokedexFlags
 
 	pop hl
 	push hl
@@ -261,6 +265,11 @@ AddPartyMon_WriteMovePP:
 	and a
 	jr z, .empty
 	dec a
+; Clamp glitch move index to prevent out-of-bounds Moves table read.
+	cp NUM_ATTACKS
+	jr c, .validMoveId
+	xor a
+.validMoveId
 	push hl
 	push de
 	push bc
@@ -332,6 +341,9 @@ _AddEnemyMonToPlayerParty::
 	ld [wPokedexNum], a
 	predef IndexToPokedex
 	ld a, [wPokedexNum]
+; fix: skip Pokédex flags for invalid dex numbers (item duplication glitch).
+	and a
+	jr z, .skipBoxPokedexFlags
 	dec a
 	ld c, a
 	ld b, FLAG_SET
@@ -341,6 +353,7 @@ _AddEnemyMonToPlayerParty::
 	pop bc
 	ld hl, wPokedexSeen
 	call FlagAction ; add to seen pokemon
+.skipBoxPokedexFlags
 	and a
 	ret                  ; return success
 

@@ -27,6 +27,10 @@ InitBattleVariables:
 	ld [hli], a
 	dec b
 	jr nz, .loop
+; fix: clear wDamage so Counter can't use stale damage from a previous battle
+	ld hl, wDamage
+	ld [hli], a
+	ld [hl], a
 	inc a ; POUND
 	ld [wTestBattlePlayerSelectedMove], a
 	ld a, [wCurMap]

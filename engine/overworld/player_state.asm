@@ -267,6 +267,10 @@ _GetTileAndCoordsInFrontOfPlayer:
 	and a ; cp SPRITE_FACING_DOWN
 	jr nz, .notFacingDown
 ; facing down
+	ld a, 8
+	ld [wTempColCoords], a
+	ld a, 11
+	ld [wTempColCoords + 1], a
 	lda_coord 8, 11
 	inc d
 	jr .storeTile
@@ -274,6 +278,10 @@ _GetTileAndCoordsInFrontOfPlayer:
 	cp SPRITE_FACING_UP
 	jr nz, .notFacingUp
 ; facing up
+	ld a, 8
+	ld [wTempColCoords], a
+	ld a, 7
+	ld [wTempColCoords + 1], a
 	lda_coord 8, 7
 	dec d
 	jr .storeTile
@@ -281,6 +289,10 @@ _GetTileAndCoordsInFrontOfPlayer:
 	cp SPRITE_FACING_LEFT
 	jr nz, .notFacingLeft
 ; facing left
+	ld a, 6
+	ld [wTempColCoords], a
+	ld a, 9
+	ld [wTempColCoords + 1], a
 	lda_coord 6, 9
 	dec e
 	jr .storeTile
@@ -288,11 +300,82 @@ _GetTileAndCoordsInFrontOfPlayer:
 	cp SPRITE_FACING_RIGHT
 	jr nz, .storeTile
 ; facing right
+	ld a, 10
+	ld [wTempColCoords], a
+	ld a, 9
+	ld [wTempColCoords + 1], a
 	lda_coord 10, 9
 	inc e
 .storeTile
+	cp $3d ; cut tree tile?
+	call z, ReadTileFromVram
 	ld c, a
 	ld [wTileInFrontOfPlayer], a
+	ret
+
+; Read the actual tile from VRAM to handle wTileMap/VRAM desync
+; after map connections (invisible tree glitch).
+; If wTileMap says $3D (cut tree) but VRAM has a different tile,
+; use the VRAM value instead.
+; Input: wTempColCoords = screen x,y coordinates
+; Output: a = tile from VRAM
+; References:
+;   https://glitchcity.wiki/wiki/Invisible_tree_glitch
+;   https://bulbapedia.bulbagarden.net/wiki/List_of_overworld_glitches_in_Generation_I
+ReadTileFromVram:
+	push bc
+	ld a, [wTempColCoords]
+	ld b, a
+	ld a, [wTempColCoords + 1]
+	ld c, a
+; get the x offset in VRAM
+	ldh a, [rSCX]
+	call .div8
+	add b
+	cp $20
+	call nc, .sub20
+	ld b, a
+; get the y offset in VRAM
+	ldh a, [rSCY]
+	call .div8
+	add c
+	cp $20
+	call nc, .sub20
+	ld c, a
+; set VRAM starting address ($9800 = BG tile map)
+	push hl
+	ld hl, $9800
+; move to proper y coordinate
+	push de
+	ld de, $0020
+.loop
+	sub 1
+	jr c, .endloop
+	add hl, de
+	jr .loop
+.endloop
+; move to proper x coordinate
+	ld d, $00
+	ld e, b
+	add hl, de
+	pop de
+; read the tile from VRAM (may need to wait for accessible mode)
+.wait
+	ld a, [hl]
+	cp $ff
+	jr z, .wait
+	pop hl
+	pop bc
+	ret
+
+.div8
+	srl a
+	srl a
+	srl a
+	ret
+
+.sub20
+	sub $20
 	ret
 
 ; hPlayerFacing

@@ -285,7 +285,9 @@ hTileAnimations:: db
 
 hMovingBGTilesCounter1:: db
 
-	ds 1
+; nonzero while _UpdateSprites is building the OAM buffer in WRAM;
+; VBlank checks this and skips hDMARoutine to avoid copying a half-built buffer
+hOAMUpdateLocked:: db
 
 hCurrentSpriteOffset:: db ; multiple of $10
 

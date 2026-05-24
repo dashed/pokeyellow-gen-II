@@ -326,15 +326,21 @@ LearnMoveFromLevelUp:
 	ld a, [wPokedexNum] ; species
 	ld [wCurPartySpecies], a
 	call GetMonLearnset
-.learnSetLoop ; loop over the learn set until we reach a move that is learnt at the current level or the end of the list
+.learnSetLoop ; loop over the learn set and try to learn all moves at or below the current level
 	ld a, [hli]
 	and a ; have we reached the end of the learn set?
 	jr z, .done ; if we've reached the end of the learn set, jump
 	ld b, a ; level the move is learnt at
 	ld a, [wCurEnemyLevel]
-	cp b ; is the move learnt at the mon's current level?
+	cp b ; is the mon's level >= the move's learn level?
 	ld a, [hli] ; move ID
-	jr nz, .learnSetLoop
+; fix: use "jr c" (skip if current level < learn level) instead of "jr nz"
+; (skip if level doesn't match exactly), so that all moves at or below the
+; current level are considered. This fixes level-up learnset skipping when a
+; Pokémon gains enough EXP to skip over intermediate levels.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Level-up_learnset_skipping
+	jr c, .learnSetLoop
+	push hl ; save learnset pointer (HL switches to party data below)
 	ld d, a ; ID of move to learn
 	ld a, [wMonDataLocation]
 	and a
@@ -352,7 +358,7 @@ LearnMoveFromLevelUp:
 .checkCurrentMovesLoop ; check if the move to learn is already known
 	ld a, [hli]
 	cp d
-	jr z, .done ; if already known, jump
+	jr z, .continueLearnset ; if already known, continue checking learnset
 	dec b
 	jr nz, .checkCurrentMovesLoop
 	ld a, d
@@ -363,19 +369,22 @@ LearnMoveFromLevelUp:
 	predef LearnMove
 	ld a, b
 	and a
-	jr z, .done
+	jr z, .continueLearnset
 	callfar IsThisPartyMonStarterPikachu
-	jr nc, .done
+	jr nc, .continueLearnset
 	ld a, [wMoveNum]
 	cp THUNDERBOLT
 	jr z, .foundThunderOrThunderbolt
 	cp THUNDER
-	jr nz, .done
+	jr nz, .continueLearnset
 .foundThunderOrThunderbolt
 	ld a, $5
 	ld [wd49b], a
 	ld a, $85
 	ld [wPikachuMood], a
+.continueLearnset
+	pop hl ; restore learnset pointer
+	jr .learnSetLoop
 .done
 	ld a, [wCurPartySpecies]
 	ld [wPokedexNum], a
@@ -582,6 +591,11 @@ WriteMonMoves:
 	add hl, de
 	push hl
 	dec a
+; Clamp glitch move index to prevent out-of-bounds Moves table read.
+	cp NUM_ATTACKS
+	jr c, .validMoveId
+	xor a
+.validMoveId
 	ld hl, Moves
 	ld bc, MOVE_LENGTH
 	call AddNTimes

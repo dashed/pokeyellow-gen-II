@@ -322,28 +322,14 @@ DisplayNamingScreen:
 	jp EraseMenuCursor
 
 LoadEDTile:
-; In Red/Blue, the bank for the ED_tile was defined incorrectly as bank0
-; Luckily, the MBC3 treats loading $0 into $2000-$2fff range as loading bank1 into $4000-$7fff range
-; Because Yellow uses the MBC5, loading $0 into $2000 - $2fff range will load bank0 instead of bank1 and thus incorrectly load the tile
-; Instead of defining the correct bank, GameFreak decided to simply copy the ED_Tile in the function during HBlank
+; Red/Blue specified bank 0 for the ED tile, but MBC3 mapped bank 0 as
+; bank 1, so it worked. Yellow's MBC5 maps bank 0 correctly, so GameFreak
+; worked around it by manually copying during HBlank. Use CopyVideoDataDouble
+; for proper V-blank timing and maximum emulator compatibility.
 	ld de, ED_Tile
 	ld hl, vFont tile $70
-	ld c, $4 ; number of copies needed
-.waitForHBlankLoop
-	ldh a, [rSTAT]
-	and %10 ; in HBlank?
-	jr nz, .waitForHBlankLoop
-	ld a, [de]
-	ld [hli], a
-	ld [hli], a
-	inc de
-	ld a, [de]
-	ld [hli], a
-	ld [hli], a
-	inc de
-	dec c
-	jr nz, .waitForHBlankLoop
-	ret
+	lb bc, BANK(ED_Tile), (ED_TileEnd - ED_Tile) / $8
+	jp CopyVideoDataDouble
 
 ED_Tile:
 	INCBIN "gfx/font/ED.1bpp"

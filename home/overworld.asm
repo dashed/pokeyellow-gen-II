@@ -787,8 +787,7 @@ StopBikeSurf:
 	ld hl, wStatusFlags6
 	bit BIT_DUNGEON_WARP, [hl]
 	ret z
-	call PlayDefaultMusic
-	ret
+	jp PlayDefaultMusic
 
 LoadPlayerSpriteGraphics::
 ; Load sprite graphics based on whether the player is standing, biking, or surfing.
@@ -1329,7 +1328,7 @@ CheckForTilePairCollisions::
 	ld a, [hl]
 	cp c
 	jr z, .foundMatch
-	jr .tilePairCollisionLoop
+	jr .retry
 .currentTileMatchesSecondInPair
 	dec hl
 	ld a, [hli]
@@ -1431,8 +1430,7 @@ LoadCurrentMapView::
 	dec b
 	jr nz, .rowLoop2
 	pop af
-	call BankswitchCommon
-	ret
+	jp BankswitchCommon
 
 AdvancePlayerSprite::
 	ld a, [wUpdateSpritesEnabled]
@@ -1583,8 +1581,7 @@ JoypadOverworld::
 	call RunMapScript
 	call Joypad
 	call ForceBikeDown
-	call AreInputsSimulated
-	ret
+	jp AreInputsSimulated
 
 ForceBikeDown::
 	ld a, [wStatusFlags7]
@@ -1917,8 +1914,7 @@ asm_0dbd:
 	ld a, [hl]
 	ld [wMapMusicROMBank], a ; music 2
 	pop af
-	call BankswitchCommon
-	ret
+	jp BankswitchCommon
 
 ; function to copy map connection data from ROM to WRAM
 ; Input: hl = source, de = destination
@@ -1979,14 +1975,12 @@ LoadMapData::
 	call PlayDefaultMusicFadeOutCurrent
 .restoreRomBank
 	pop af
-	call BankswitchCommon
-	ret
+	jp BankswitchCommon
 
 LoadScreenRelatedData::
 	call LoadTileBlockMap
 	call LoadTilesetTilePatternData
-	call LoadCurrentMapView
-	ret
+	jp LoadCurrentMapView
 
 ReloadMapAfterSurfingMinigame::
 	ldh a, [hLoadedROMBank]

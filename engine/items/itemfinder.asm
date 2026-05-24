@@ -27,7 +27,12 @@ HiddenItemNear:
 	ld a, [wYCoord]
 	call Sub5ClampTo0
 	cp d
+; Fix: `jr nc` skips when A >= D, but equality means the item is at the
+; detection boundary and should be found. Without this, items at Y=0 are
+; missed when the player is at Y=0..5 (Sub5ClampTo0 clamps to 0).
+	jr z, .checkYUpper
 	jr nc, .loop
+.checkYUpper
 	ld a, [wYCoord]
 	add 4
 	cp d
@@ -35,7 +40,10 @@ HiddenItemNear:
 	ld a, [wXCoord]
 	call Sub5ClampTo0
 	cp e
+; Fix: same off-by-one for X coordinate lower bound.
+	jr z, .checkXUpper
 	jr nc, .loop
+.checkXUpper
 	ld a, [wXCoord]
 	add 5
 	cp e

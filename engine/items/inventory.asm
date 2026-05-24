@@ -72,9 +72,12 @@ AddItemToInventory_::
 	and a ; is there room for a new item slot?
 	jr z, .increaseItemQuantityFailed
 ; if so, store 99 in the current slot and store the rest in a new slot
+; BUGFIX: Jump directly to .addNewItem instead of re-entering the search
+; loop at .addAnotherStackOfItem.  The search loop can scan past the $FF
+; terminator into unrelated WRAM and corrupt memory.
 	ld a, 99
 	ld [hli], a
-	jp .addAnotherStackOfItem
+	jp .addNewItem
 .increaseItemQuantityFailed
 	pop hl
 	and a

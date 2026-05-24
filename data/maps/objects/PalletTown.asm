@@ -20,6 +20,9 @@ PalletTown_Object:
 	def_object_events
 	object_event 10,  4, SPRITE_OAK, STAY, NONE, TEXT_PALLETTOWN_OAK
 	object_event  3,  8, SPRITE_GIRL, WALK, ANY_DIR, TEXT_PALLETTOWN_GIRL
-	object_event 11, 14, SPRITE_FISHER, WALK, ANY_DIR, TEXT_PALLETTOWN_FISHER
+; fix: restrict to UP_DOWN to prevent walking onto Oak's Lab door tile.
+; With ANY_DIR, the fisher at (11,14) can reach the door warp at (12,11).
+; https://bulbapedia.bulbagarden.net/wiki/List_of_overworld_glitches_in_Generation_I
+	object_event 11, 14, SPRITE_FISHER, WALK, UP_DOWN, TEXT_PALLETTOWN_FISHER
 
 	def_warps_to PALLET_TOWN

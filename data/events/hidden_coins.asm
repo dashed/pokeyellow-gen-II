@@ -16,6 +16,7 @@ HiddenCoinCoords:
 	hidden_coin GAME_CORNER, 10, 16
 	hidden_coin GAME_CORNER, 11,  7
 	hidden_coin GAME_CORNER, 15,  8
-	hidden_coin GAME_CORNER, 12, 15
+; fix: removed hidden_coin GAME_CORNER, 12, 15 — tile is a slot machine
+; used by an NPC (Gambler at 11,15); coins were never obtainable.
 	assert_max_table_length MAX_HIDDEN_COINS
 	db -1 ; end

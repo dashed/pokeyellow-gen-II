@@ -209,6 +209,11 @@ _ItemUseNoEffectText::
 	line "effect."
 	prompt
 
+_RepelAlreadyActiveText::
+	text "A repel's effect"
+	line "is still active!"
+	prompt
+
 _ThrowBallAtTrainerMonText1::
 	text "The trainer"
 	line "blocked the BALL!"

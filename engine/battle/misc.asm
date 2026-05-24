@@ -8,6 +8,11 @@ FormatMovesString:
 	and a ; end of move list?
 	jr z, .printDashLoop ; print dashes when no moves are left
 	push hl
+; Clamp glitch move IDs to prevent Super Glitch name overflow.
+	cp NUM_ATTACKS + 1
+	jr c, .validMoveId
+	ld a, STRUGGLE
+.validMoveId
 	ld [wNameListIndex], a
 	ld a, BANK(MoveNames)
 	ld [wPredefBank], a

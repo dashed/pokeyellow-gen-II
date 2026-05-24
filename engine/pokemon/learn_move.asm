@@ -43,6 +43,11 @@ DontAbandonLearning:
 	push hl
 	push de
 	dec a
+; Clamp glitch move index to prevent out-of-bounds Moves table read.
+	cp NUM_ATTACKS
+	jr c, .validMoveId
+	xor a
+.validMoveId
 	ld hl, Moves
 	ld bc, MOVE_LENGTH
 	call AddNTimes
@@ -61,11 +66,27 @@ DontAbandonLearning:
 	ld a, [wPlayerMonNumber]
 	cp b
 	jp nz, PrintLearnedMove
+; fix: selectively copy party moves to battle, preserving Mimic'd slots.
+; If party has MIMIC but battle has the copied move, Mimic was used on that
+; slot — skip copying to preserve the Mimic'd move during level-up.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Mimic_level_up_glitch
 	ld h, d
 	ld l, e
 	ld de, wBattleMonMoves
-	ld bc, NUM_MOVES
-	call CopyData
+	ld b, NUM_MOVES
+.copyMoveLoop
+	ld a, [de]            ; battle move for this slot
+	cp MIMIC
+	ld a, [hli]           ; party move for this slot (advance HL)
+	jr z, .copyThisMove   ; battle=MIMIC → always copy (Mimic not used here)
+	cp MIMIC
+	jr z, .skipThisMove   ; party=MIMIC, battle≠MIMIC → Mimic active, preserve
+.copyThisMove
+	ld [de], a
+.skipThisMove
+	inc de
+	dec b
+	jr nz, .copyMoveLoop
 	ld bc, MON_PP - MON_OTID
 	add hl, bc
 	ld de, wBattleMonPP

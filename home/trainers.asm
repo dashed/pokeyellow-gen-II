@@ -72,10 +72,10 @@ ReadTrainerHeaderInfo::
 	jr z, .readPointer ; read end battle text
 	cp $a
 	jr nz, .done
-	ld a, [hli]        ; read end battle text (2) but override the result afterwards (XXX why, bug?)
-	ld d, [hl]
-	ld e, a
-	jr .done
+; Read end battle text 2 into hl (same as other pointer offsets).
+; Original code read into de here, but .done's `pop de` immediately
+; destroyed the result. The caller now copies hl→de after this returns.
+; https://github.com/pret/pokered/wiki/%5BARCHIVED%5D-Bugs-and-Glitches
 .readPointer
 	ld a, [hli]
 	ld h, [hl]
@@ -108,11 +108,11 @@ TalkToTrainer::
 	call ReadTrainerHeaderInfo     ; print before battle text
 	call PrintText
 	ld a, $a
-	call ReadTrainerHeaderInfo     ; (?) does nothing apparently (maybe bug in ReadTrainerHeaderInfo)
-	push de
+	call ReadTrainerHeaderInfo     ; read end battle text 2 (lose text) into hl
+	ld d, h                        ; save lose text pointer in de
+	ld e, l
 	ld a, $8
-	call ReadTrainerHeaderInfo     ; read end battle text
-	pop de
+	call ReadTrainerHeaderInfo     ; read end battle text 1 (win text) into hl
 	call SaveEndBattleTextPointers
 	ld hl, wStatusFlags7
 	set BIT_USE_CUR_MAP_SCRIPT, [hl] ; activate map script index override (index is set below)

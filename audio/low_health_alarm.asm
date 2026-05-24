@@ -9,6 +9,12 @@ Music_DoLowHealthAlarm::
 	and LOW_HEALTH_TIMER_MASK
 	jr nz, .notToneHi ;if timer > 0, play low tone.
 
+; fix: decrement beep counter each cycle; auto-disable when it reaches 0
+	ld a, [wLowHealthAlarmCounter]
+	dec a
+	ld [wLowHealthAlarmCounter], a
+	jr z, .disableAlarm
+
 	call .playToneHi
 	ld a, 30 ;keep this tone for 30 frames.
 	jr .resetTimer

@@ -17,6 +17,18 @@ SafariZoneGate_ScriptPointers:
 	EXPORT SCRIPT_SAFARIZONEGATE_LEAVING_SAFARI ; used by engine/events/hidden_events/safari_game.asm
 
 SafariZoneGateDefaultScript:
+; If the player is returning from the Safari Zone (north exit), redirect
+; to the leaving script. This prevents the step counter from persisting
+; if the player saved inside the Safari Zone, reset, and walked back.
+	CheckEvent EVENT_IN_SAFARI_ZONE
+	jr z, .notReturningFromSafari
+	ld hl, .PlayerReturningFromSafariZoneCoordsArray
+	call ArePlayerCoordsInArray
+	jr nc, .notReturningFromSafari
+	ld a, SCRIPT_SAFARIZONEGATE_LEAVING_SAFARI
+	ld [wSafariZoneGateCurScript], a
+	ret
+.notReturningFromSafari
 	ld hl, .PlayerNextToSafariZoneWorker1CoordsArray
 	call ArePlayerCoordsInArray
 	ret nc
@@ -44,6 +56,11 @@ SafariZoneGateDefaultScript:
 	ld a, SCRIPT_SAFARIZONEGATE_PLAYER_MOVING_RIGHT
 	ld [wSafariZoneGateCurScript], a
 	ret
+
+.PlayerReturningFromSafariZoneCoordsArray:
+	dbmapcoord  3,  0
+	dbmapcoord  4,  0
+	db -1 ; end
 
 .PlayerNextToSafariZoneWorker1CoordsArray:
 	dbmapcoord  3,  2

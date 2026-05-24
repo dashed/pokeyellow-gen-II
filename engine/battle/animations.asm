@@ -1414,11 +1414,9 @@ AdjustOAMBlockYPos2:
 	ld a, [hl]
 	add b
 	cp 112
-	jr c, .skipSettingPreviousEntrysAttribute
-	dec hl
-	ld a, 160 ; bug, sets previous OAM entry's attribute
-	ld [hli], a
-.skipSettingPreviousEntrysAttribute
+	jr c, .noOverflow
+	ld a, 160
+.noOverflow
 	ld [hl], a
 	add hl, de
 	dec c
@@ -1970,6 +1968,10 @@ AnimationWavyScreen:
 	ld c, $ff
 	ld hl, WavyScreenLineOffsets
 .loop
+; fix: set hSCX so the VBlank handler applies the wave offset to scanline 0
+; (without this, the top 3 lines render before the HBlank loop can set rSCX)
+	ld a, [hl]
+	ldh [hSCX], a
 	push hl
 .innerLoop
 	call WavyScreen_SetSCX
@@ -1986,6 +1988,7 @@ AnimationWavyScreen:
 	dec c
 	jr nz, .loop
 	xor a
+	ldh [hSCX], a ; clear wave offset so VBlank doesn't shift the screen
 	ldh [hWY], a
 	call SaveScreenTilesToBuffer2
 	call ClearScreen

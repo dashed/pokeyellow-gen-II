@@ -19,6 +19,14 @@ DisplayMonFrontSpriteInBox:
 	ldh [hStartTileID], a
 	hlcoord 10, 11
 	predef AnimateSendingOutMon
+; Play the cry for real Pokémon, but skip it for museum fossils.
+	ld a, [wCurPartySpecies]
+	cp FOSSIL_KABUTOPS
+	jr z, .skipCry
+	cp FOSSIL_AERODACTYL
+	jr z, .skipCry
+	call PlayCry
+.skipCry
 	call WaitForTextScrollButtonPress
 	call LoadScreenTilesFromBuffer1
 	call Delay3

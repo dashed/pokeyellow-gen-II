@@ -69,7 +69,7 @@ GateUpstairsScript_PrintIfFacingUp:
 	ld a, [wSpritePlayerStateData1FacingDirection]
 	cp SPRITE_FACING_UP
 	jr z, .up
-	ld a, TRUE
+	ld a, 2 ; close immediately — skip both wait loops to unfreeze sprites
 	jr .done
 .up
 	call PrintText

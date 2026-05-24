@@ -1,3 +1,4 @@
+pub mod battle;
 pub mod benchmark;
 pub mod debug;
 pub mod golden;
@@ -7,6 +8,7 @@ pub mod link;
 pub mod rom;
 pub mod symbols;
 
+pub use battle::BattleFixture;
 pub use benchmark::{measure_cycles, measure_cycles_to};
 pub use debug::{CpuSnapshot, JoypadSnapshot};
 pub use golden::{compare_screenshot, golden_dir, save_screenshot, should_generate};

@@ -1501,4 +1501,4 @@ The species-shift loop in `_RemovePokemon` used `inc a / jr nz` to detect the $F
 
 ## Not fixed (could fix in the future)
 
-See [REMAINING_GLITCHES.md](REMAINING_GLITCHES.md) for the full audit of 156 glitches.
+See [REMAINING_GLITCHES.md](REMAINING_GLITCHES.md) for the full audit of unfixed glitches.

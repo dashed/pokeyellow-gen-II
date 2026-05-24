@@ -9,7 +9,7 @@ This fork uses a **modular feature branch strategy** where:
 - `master` tracks upstream (dannye/pokeyellow-gen-2-gfx)
 - `dashed/tests` provides a shared test harness foundation based on `master`
 - Each feature group lives in its own branch based on `dashed/tests`, with its own test file(s)
-- `dashed/docs` holds fork-level documentation (this file, VANILLA_BUGS.md)
+- `dashed/docs` holds fork-level documentation in `docs/` (this file, VANILLA_BUGS.md, etc.)
 - `dashed-patch` is a merge commit that combines all desired features + docs
 - Jujutsu (jj) is used for version control alongside Git
 
@@ -146,8 +146,12 @@ master (upstream @ author/master)
     │── Documentation:
     │
     ├── dashed/docs (based on dashed/tests)
-    │   ├── FORK_WORKFLOW.md (this file)
-    │   └── VANILLA_BUGS.md (bug documentation)
+    │   └── docs/
+    │       ├── FORK_WORKFLOW.md (this file)
+    │       ├── VANILLA_BUGS.md (bug documentation)
+    │       ├── REMAINING_GLITCHES.md (unfixed glitches audit)
+    │       ├── TEST_COVERAGE_ANALYSIS.md (test gap analysis)
+    │       └── (Bulbapedia reference copies)
     │
     └── dashed-patch (15-parent merge = integration branch)
 ```
@@ -171,12 +175,12 @@ master (upstream @ author/master)
 | `dashed/surge-trash` | `dashed/tests` | 1 | 1 | Lt. Surge trash can randomization | `engine/events/hidden_events/` |
 | `dashed/transform-swap` | `dashed/tests` | 1 | 1 | Move swap while transformed | `engine/battle/core.asm` |
 | `dashed/item-overflow` | `dashed/tests` | 1 | 1 | Item stack overflow prevention | `engine/items/inventory.asm` |
-| `dashed/docs` | `dashed/tests` | — | — | Fork documentation | `FORK_WORKFLOW.md`, `VANILLA_BUGS.md` |
+| `dashed/docs` | `dashed/tests` | — | — | Fork documentation | `docs/FORK_WORKFLOW.md`, `docs/VANILLA_BUGS.md` |
 | `dashed-patch` | (15-parent merge) | — | ~118 | Integration branch | (merge only) |
 
 Branches that share `engine/battle/core.asm` (accuracy-crit, battle-bugs, ghost-battle, transform-swap) modify different functions within the file, so jj/git auto-merges them cleanly.
 
-See `VANILLA_BUGS.md` for a complete list of all fixed bugs with code-level details, references, and links to [Glitch City Wiki](https://glitchcity.wiki/wiki/) and [Bulbapedia](https://bulbapedia.bulbagarden.net/wiki/).
+See `docs/VANILLA_BUGS.md` for a complete list of all fixed bugs with code-level details, references, and links to [Glitch City Wiki](https://glitchcity.wiki/wiki/) and [Bulbapedia](https://bulbapedia.bulbagarden.net/wiki/).
 
 ## Jujutsu (jj) Setup
 

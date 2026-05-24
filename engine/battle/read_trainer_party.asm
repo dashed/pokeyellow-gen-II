@@ -138,8 +138,11 @@ ReadTrainer:
 	push bc
 	predef AddBCDPredef
 	pop bc
-	inc de
-	inc de
+; ZZAZZ fix: reload DE to prevent pointer drift on BCD overflow.
+; AddBCD's overflow handler advances DE past wAmountMoneyWon, and the
+; original `inc de / inc de` assumed no overflow.  Reloading DE ensures
+; the next iteration always writes to the correct address.
+	ld de, wAmountMoneyWon + 2
 	dec b
 	jr nz, .LastLoop ; repeat wCurEnemyLevel times
 	ret

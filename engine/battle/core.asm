@@ -5689,6 +5689,11 @@ EnemyCanExecuteChargingMove:
 	res CHARGING_UP, [hl] ; no longer charging up for attack
 	res INVULNERABLE, [hl] ; no longer invulnerable to typical attacks
 	ld a, [wEnemyMoveNum]
+; Clamp glitch move IDs to prevent Super Glitch name overflow.
+	cp NUM_ATTACKS + 1
+	jr c, .validMoveId
+	ld a, STRUGGLE
+.validMoveId
 	ld [wNameListIndex], a
 	ld a, BANK(MoveNames)
 	ld [wPredefBank], a
@@ -6163,6 +6168,11 @@ GetCurrentMove:
 	jr nz, .selected
 	ld a, [wPlayerSelectedMove]
 .selected
+; Clamp glitch move index for both name lookup and Moves table read.
+	cp NUM_ATTACKS + 1
+	jr c, .validMoveId
+	ld a, STRUGGLE
+.validMoveId
 	ld [wNameListIndex], a
 	dec a
 	ld hl, Moves
@@ -6320,11 +6330,18 @@ LoadEnemyMonData:
 	ld [wPokedexNum], a
 	predef IndexToPokedex
 	ld a, [wPokedexNum]
+; fix: skip Pokédex seen flag for invalid dex numbers (item duplication glitch).
+; IndexToPokedex returns 0 for glitch species. Without this guard, dec a wraps
+; to 255, and FlagAction sets bit 255 of wPokedexSeen — 12 bytes past the
+; array, into wBagItems (6th item quantity), adding 128 to it.
+	and a
+	jr z, .skipInvalidDex
 	dec a
 	ld c, a
 	ld b, FLAG_SET
 	ld hl, wPokedexSeen
 	predef FlagActionPredef ; mark this mon as seen in the pokedex
+.skipInvalidDex
 	ld hl, wEnemyMonLevel
 	ld de, wEnemyMonUnmodifiedLevel
 	ld bc, 1 + NUM_STATS * 2

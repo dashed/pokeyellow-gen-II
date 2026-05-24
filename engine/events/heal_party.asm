@@ -27,6 +27,15 @@ HealParty:
 	jr z, .nextmove
 
 	dec a
+; Clamp glitch move indices to POUND (index 0) to prevent out-of-bounds
+; reads past the Moves table into BaseStats data. Glitch moves (ID > NUM_ATTACKS)
+; and NO_MOVE (ID 0, wraps to $FF after dec) both get clamped.
+; https://bulbapedia.bulbagarden.net/wiki/Glitch_move
+; https://glitchcity.wiki/wiki/Glitch_move
+	cp NUM_ATTACKS
+	jr c, .validMoveId
+	xor a
+.validMoveId
 	ld hl, MON_PP - MON_HP
 	add hl, de
 

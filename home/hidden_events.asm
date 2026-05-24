@@ -33,5 +33,4 @@ CheckForHiddenEventOrBookshelfOrCardKeyDoor::
 .done
 	ldh [hItemAlreadyFound], a
 	pop af
-	call BankswitchCommon
-	ret
+	jp BankswitchCommon

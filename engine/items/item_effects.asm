@@ -1463,7 +1463,7 @@ ItemUseMedicine:
 	add hl, bc ; hl now points to level
 	ld a, [hl] ; a = level
 	cp MAX_LEVEL
-	jr z, .vitaminNoEffect ; can't raise level above 100
+	jr nc, .vitaminNoEffect ; fix: cap at level >= 100 (leveling past 100 glitch)
 	inc a
 	ld [hl], a ; store incremented level
 	ld [wCurEnemyLevel], a
@@ -2771,6 +2771,11 @@ GetMaxPP:
 .next
 	ld a, [hl]
 	dec a
+; Clamp glitch move index to prevent out-of-bounds Moves table read.
+	cp NUM_ATTACKS
+	jr c, .validMoveId
+	xor a
+.validMoveId
 	push hl
 	ld hl, Moves
 	ld bc, MOVE_LENGTH

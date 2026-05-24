@@ -8,7 +8,12 @@ _RemovePokemon::
 	ld a, [hl]
 	dec a
 	ld [hli], a
-
+; fix: count-based species shift to prevent Pokémon merge glitch.
+; The original loop used `inc a / jr nz` to detect the $FF terminator,
+; but species index $FF (glitch Pokémon) is indistinguishable from the
+; terminator, causing premature loop exit and species-data mismatch.
+	inc a ; a = newCount + 1 (remaining species + terminator)
+	push af
 	ld a, [wWhichPokemon]
 	ld c, a
 	ld b, 0
@@ -16,12 +21,15 @@ _RemovePokemon::
 	ld e, l
 	ld d, h
 	inc de
+	pop af
+	sub c ; a = newCount + 1 - wWhichPokemon = bytes to shift
+	ld b, a
 .shiftMonSpeciesLoop
 	ld a, [de]
 	inc de
 	ld [hli], a
-	inc a ; reached terminator?
-	jr nz, .shiftMonSpeciesLoop ; if not, continue shifting species
+	dec b
+	jr nz, .shiftMonSpeciesLoop
 
 	ld hl, wPartyMonOT
 	ld d, PARTY_LENGTH - 1 ; max number of pokemon to shift

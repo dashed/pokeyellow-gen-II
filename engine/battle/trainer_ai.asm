@@ -263,6 +263,11 @@ ReadMove:
 	push de
 	push bc
 	dec a
+; Clamp glitch move index to prevent out-of-bounds Moves table read.
+	cp NUM_ATTACKS
+	jr c, .validMoveId
+	xor a
+.validMoveId
 	ld hl, Moves
 	ld bc, MOVE_LENGTH
 	call AddNTimes

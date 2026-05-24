@@ -19,7 +19,12 @@ fn setup_hit_chance_fixture() -> TestHarness {
     h
 }
 
-fn calc_hit_chance(h: &mut TestHarness, base_accuracy: u8, accuracy_mod: u8, evasion_mod: u8) -> u8 {
+fn calc_hit_chance(
+    h: &mut TestHarness,
+    base_accuracy: u8,
+    accuracy_mod: u8,
+    evasion_mod: u8,
+) -> u8 {
     h.write_mem(sym_addr("hWhoseTurn"), 0x00);
     h.write_mem(sym_addr("wPlayerMoveAccuracy"), base_accuracy);
     h.write_mem(sym_addr("wPlayerMonAccuracyMod"), accuracy_mod);

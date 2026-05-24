@@ -134,7 +134,10 @@ fn defense_1_high_damage() {
     let mut h = setup_damage_fixture();
     let damage = calc_damage(&mut h, 100, 200, 1, 100);
     let expected = expected_damage(100, 100, 200, 1);
-    assert_eq!(damage, expected, "Defense 1 should produce very high damage");
+    assert_eq!(
+        damage, expected,
+        "Defense 1 should produce very high damage"
+    );
     assert!(
         damage > 100,
         "Defense 1 with these stats should yield high damage, got {damage}"

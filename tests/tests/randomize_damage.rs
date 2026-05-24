@@ -72,7 +72,10 @@ fn damage_2_is_randomized() {
             break;
         }
     }
-    assert!(saw_1, "damage=2: expected to see result=1 (floor(2*217/255)=1) in 200 trials");
+    assert!(
+        saw_1,
+        "damage=2: expected to see result=1 (floor(2*217/255)=1) in 200 trials"
+    );
     assert!(saw_2, "damage=2: expected to see result=2 in 200 trials");
 }
 

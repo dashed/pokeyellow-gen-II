@@ -212,7 +212,11 @@ fn transform_does_not_copy_max_hp() {
     let mut h = run_player_transform();
     let max_hp = sym_addr("wBattleMonMaxHP");
     assert_eq!(h.read_mem(max_hp), 0xFF, "maxHP hi should NOT be copied");
-    assert_eq!(h.read_mem(max_hp + 1), 0xFF, "maxHP lo should NOT be copied");
+    assert_eq!(
+        h.read_mem(max_hp + 1),
+        0xFF,
+        "maxHP lo should NOT be copied"
+    );
 }
 
 // ─── Stat mods and unmodified stats via .copyBasedOnTurn ──────────

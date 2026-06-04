@@ -5,17 +5,25 @@ PrintLetterDelay::
 	ld a, [wStatusFlags5]
 	bit BIT_NO_TEXT_DELAY, a
 	ret nz
+
+	; non-scrolling text?
 	ld a, [wLetterPrintingDelayFlags]
 	bit BIT_TEXT_DELAY, a
 	ret z
+
 	push hl
 	push de
 	push bc
+
+	; force fast scroll?
 	ld a, [wLetterPrintingDelayFlags]
 	bit BIT_FAST_TEXT_DELAY, a
 	jr z, .waitOneFrame
+
+	; text speed
 	ld a, [wOptions]
-	and $f
+	and TEXT_DELAY_MASK
+	jr z, .done ; WARP mode (0) — skip per-character delay entirely
 	ldh [hFrameCounter], a
 	jr .checkButtons
 .waitOneFrame

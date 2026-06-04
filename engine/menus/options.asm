@@ -51,11 +51,13 @@ OptionMenuJumpTable:
 	dw OptionsMenu_Dummy
 	dw OptionsMenu_Cancel
 
+; Option menu indices for text speed (cycle: FAST → MID → SLOW → WARP → FAST)
 	const_def
 	const OPT_TEXT_SPEED_FAST ; 0
 	const OPT_TEXT_SPEED_MID  ; 1
 	const OPT_TEXT_SPEED_SLOW ; 2
-DEF NUM_TEXT_SPEED_OPTS EQU const_value ; 3
+	const OPT_TEXT_SPEED_WARP ; 3
+DEF NUM_TEXT_SPEED_OPTS EQU const_value ; 4
 
 OptionsMenu_TextSpeed:
 	call GetTextSpeed
@@ -70,7 +72,7 @@ OptionsMenu_TextSpeed:
 	ld a, c
 	cp NUM_TEXT_SPEED_OPTS - 1
 	jr c, .increase
-	ld c, -1
+	ld c, -1 ; wrap around to FAST
 .increase
 	inc c
 	ld a, e
@@ -80,7 +82,7 @@ OptionsMenu_TextSpeed:
 	ld a, c
 	and a
 	jr nz, .decrease
-	ld c, NUM_TEXT_SPEED_OPTS
+	ld c, NUM_TEXT_SPEED_OPTS ; wrap around to WARP
 .decrease
 	dec c
 	ld a, d
@@ -107,13 +109,17 @@ OptionsMenu_TextSpeed:
 
 .Strings:
 ; entries correspond to OPT_TEXT_SPEED_* constants
+	table_width 2
 	dw .Fast
 	dw .Mid
 	dw .Slow
+	dw .Warp
+	assert_table_length NUM_TEXT_SPEED_OPTS
 
 .Fast: db "FAST@"
 .Mid:  db "MID @"
 .Slow: db "SLOW@"
+.Warp: db "WARP@"
 
 ; Loads the value of the current selection in c
 ; Loads the text delay value of the options
@@ -125,18 +131,24 @@ GetTextSpeed:
 	jr z, .slowTextOption
 	cp TEXT_DELAY_FAST
 	jr z, .fastTextOption
+	cp TEXT_DELAY_WARP
+	jr z, .warpTextOption
 	ld c, OPT_TEXT_SPEED_MID
 	lb de, TEXT_DELAY_FAST, TEXT_DELAY_SLOW
 	ret
 
 .slowTextOption
 	ld c, OPT_TEXT_SPEED_SLOW
-	lb de, TEXT_DELAY_MEDIUM, TEXT_DELAY_FAST
+	lb de, TEXT_DELAY_MEDIUM, TEXT_DELAY_WARP
 	ret
 
 .fastTextOption
 	ld c, OPT_TEXT_SPEED_FAST
-	lb de, TEXT_DELAY_SLOW, TEXT_DELAY_MEDIUM
+	lb de, TEXT_DELAY_WARP, TEXT_DELAY_MEDIUM
+	ret
+.warpTextOption
+	ld c, OPT_TEXT_SPEED_WARP
+	lb de, TEXT_DELAY_SLOW, TEXT_DELAY_FAST
 	ret
 
 OptionsMenu_BattleAnimations:

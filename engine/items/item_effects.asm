@@ -192,9 +192,19 @@ ItemUseBall:
 ; Poké Ball:         [0, 255]
 ; Great Ball:        [0, 200]
 ; Ultra/Safari Ball: [0, 150]
-; Loop until an acceptable number is found.
+;
+; fix: Replace rejection sampling with multiplication-based range reduction.
+; The original loop called Random repeatedly until the value fell within range.
+; Because the Gen I RNG (rDIV-based) produces correlated consecutive values,
+; the number of rejection iterations deterministically linked Rand1 and Rand2,
+; causing significant catch rate bias — Ultra Balls could be worse than Poké
+; Balls, and Safari Zone Pokémon were much harder to catch than intended.
+; Fix: call Random once and compute Rand1 = Random * scale / 256, which maps
+; [0,255] uniformly onto [0,B] without any looping.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Catch_rate_RNG_oversight
+; https://glitchcity.wiki/wiki/RNG_correlation_(Generation_I)
 
-.loop
+.loop ; entry point for capture calculation (no longer loops)
 	call Random
 	ld b, a
 
@@ -206,24 +216,37 @@ ItemUseBall:
 	cp MASTER_BALL
 	jp z, .captured
 
-; Anything will do for the basic Poké Ball.
+; Anything will do for the basic Poké Ball — no scaling needed, b ∈ [0,255].
 	cp POKE_BALL
 	jr z, .checkForAilments
 
-; If it's a Great/Ultra/Safari Ball and Rand1 is greater than 200, try again.
-	ld a, 200
-	cp b
-	jr c, .loop
-
-; Less than or equal to 200 is good enough for a Great Ball.
-	ld a, [hl]
+; For Great/Ultra/Safari Ball, scale the random value into the correct range.
 	cp GREAT_BALL
-	jr z, .checkForAilments
+	jr z, .greatBallScale
 
-; If it's an Ultra/Safari Ball and Rand1 is greater than 150, try again.
-	ld a, 150
-	cp b
-	jr c, .loop
+; Ultra/Safari Ball: Rand1 = Random * 151 / 256 → [0, 150]
+	ld a, 151
+	jr .scaleRand1
+
+.greatBallScale
+; Great Ball: Rand1 = Random * 201 / 256 → [0, 200]
+	ld a, 201
+
+.scaleRand1
+; Compute b = (b * a) >> 8 via the existing Multiply routine.
+; hMultiplicand (3 bytes, big-endian) = b, hMultiplier = scale factor
+	ld c, a ; save scale factor
+	xor a
+	ldh [hMultiplicand], a
+	ldh [hMultiplicand + 1], a
+	ld a, b
+	ldh [hMultiplicand + 2], a
+	ld a, c
+	ldh [hMultiplier], a
+	call Multiply
+; The 32-bit product's byte 2 (big-endian) is the high byte of the 16-bit result.
+	ldh a, [hProduct + 2]
+	ld b, a
 
 .checkForAilments
 ; Pokémon can be caught more easily with a status ailment.
@@ -482,15 +505,11 @@ ItemUseBall:
 
 	push hl
 
-; Bug: If the Pokémon is transformed, the Pokémon is assumed to be a Ditto.
-; This is a bug because a wild Pokémon could have used Transform via
-; Mirror Move even though the only wild Pokémon that knows Transform is Ditto.
+; fix: don't assume transformed Pokémon is Ditto — wEnemyMonSpecies2 already
+; holds the original species since Transform only overwrites wEnemyMonSpecies.
 	ld hl, wEnemyBattleStatus3
 	bit TRANSFORMED, [hl]
-	jr z, .notTransformed
-	ld a, DITTO
-	ld [wEnemyMonSpecies2], a
-	jr .skip6
+	jr nz, .skip6
 
 .notTransformed
 ; If the Pokémon is not transformed, set the transformed bit and copy the
@@ -932,16 +951,10 @@ ItemUseMedicine:
 	ld a, [wCurPartySpecies]
 	ld e, a
 	ld [wCurSpecies], a
-	pop af
-	push af
-	cp CALCIUM + 1
-	jr nc, .noHappinessBoost
-	push hl
-	push de
-	farcall_ModifyPikachuHappiness PIKAHAPPY_USEDITEM
-	pop de
-	pop hl
-.noHappinessBoost
+; fix: removed premature PIKAHAPPY_USEDITEM call that fired before
+; effect checks, allowing no-effect items to boost Pikachu happiness.
+; Happiness is now only applied on the success paths (.doneHealing
+; and .gotStatName). See: Friendship item effect glitch.
 	pop af
 	ld [wCurItem], a
 	pop af
@@ -999,17 +1012,21 @@ ItemUseMedicine:
 ; if it is active in battle
 	xor a
 	ld [wBattleMonStatus], a ; remove the status ailment in the in-battle pokemon data
-	push hl
-	ld hl, wPlayerBattleStatus3
-	res BADLY_POISONED, [hl] ; heal Toxic status
-	pop hl
-	ld bc, MON_STATS - MON_STATUS
-	add hl, bc ; hl now points to party stats
-	ld de, wBattleMonStats
-	ld bc, NUM_STATS * 2
-	call CopyData ; copy party stats to in-battle stat data
-	predef DoubleOrHalveSelectedStats
+	call .reapplyStatModsAfterCure
 	jp .doneHealing
+
+; Reapply stat stage modifiers and badge boosts after curing a status ailment.
+; The vanilla code copied raw party stats to battle stats, wiping out all stat
+; stage changes and badge boosts. This subroutine recalculates battle stats from
+; unmodified stats using the current stat stages, then reapplies badge boosts.
+.reapplyStatModsAfterCure
+	ld hl, wPlayerBattleStatus3
+	res BADLY_POISONED, [hl] ; clear Toxic escalation flag
+	xor a
+	ld [wCalculateWhoseStats], a ; 0 = player
+	callfar CalculateModifiedStats
+	callfar ApplyBadgeStatBoosts
+	ret
 
 .healHP
 	inc hl ; hl = address of current HP
@@ -1294,6 +1311,9 @@ ItemUseMedicine:
 	jr nz, .calculateHPBarCoords
 	xor a
 	ld [wBattleMonStatus], a ; remove the status ailment in the in-battle pokemon data
+	push de
+	call .reapplyStatModsAfterCure
+	pop de
 .calculateHPBarCoords
 	hlcoord 4, -1
 	ld bc, 2 * SCREEN_WIDTH
@@ -1312,6 +1332,8 @@ ItemUseMedicine:
 	ld a, [wPseudoItemID]
 	and a ; using Softboiled?
 	jr nz, .skipRemovingItem ; no item to remove if using Softboiled
+; fix: boost Pikachu happiness only when healing item actually worked
+	farcall_ModifyPikachuHappiness PIKAHAPPY_USEDITEM
 	push hl
 	call RemoveUsedItem
 	pop hl
@@ -1436,6 +1458,8 @@ ItemUseMedicine:
 	ld de, wStringBuffer
 	ld bc, STAT_NAME_LENGTH
 	call CopyData ; copy the stat's name to wStringBuffer
+; fix: boost Pikachu happiness only when vitamin actually worked
+	farcall_ModifyPikachuHappiness PIKAHAPPY_USEDITEM
 	ld a, SFX_HEAL_AILMENT
 	call PlaySound
 	ld hl, VitaminStatRoseText
@@ -1680,9 +1704,18 @@ ItemUseRepelCommon:
 	ld a, [wIsInBattle]
 	and a
 	jp nz, ItemUseNotTime
+; fix: prevent overriding an active repel effect (matches Gen II behavior).
+; Without this, using a weaker repel while a stronger one is active wastes
+; the remaining steps by unconditionally overwriting wRepelRemainingSteps.
+	ld a, [wRepelRemainingSteps]
+	and a
+	jr nz, .alreadyActive
 	ld a, b
 	ld [wRepelRemainingSteps], a
 	jp PrintItemUseTextAndRemoveItem
+.alreadyActive
+	ld hl, RepelAlreadyActiveText
+	jp ItemUseFailed
 
 ; handles X Accuracy item
 ItemUseXAccuracy:
@@ -1756,6 +1789,12 @@ ItemUsePokeDoll:
 	ld a, [wIsInBattle]
 	dec a
 	jp nz, ItemUseNotTime
+; Prevent Poké Doll from working against the ghost Marowak.
+; Without this check, the player can skip acquiring the Silph Scope entirely.
+; https://glitchcity.wiki/wiki/Go_past_the_Marowak_ghost_without_a_Silph_Scope
+; https://bulbapedia.bulbagarden.net/wiki/Marowak_(ghost)
+	callfar IsGhostBattle
+	jp z, ItemUseNotTime
 	ld a, $01
 	ld [wEscapedFromBattle], a
 	jp PrintItemUseTextAndRemoveItem
@@ -2321,10 +2360,7 @@ ItemUsePPRestore:
 
 .fullyRestorePP
 	ld a, [hl] ; move PP
-; Bug: This code doesn't mask out the upper two bits, which are used to count
-; how many PP Ups have been used on the move.
-; So, Max Ethers and Max Elixirs will not be detected as having no effect on
-; a move with full PP if the move has had any PP Ups used on it.
+	and PP_MASK ; fix: mask out PP Up bits before comparing
 	cp b ; does current PP equal max PP?
 	ret z
 	jr .storeNewAmount
@@ -2605,6 +2641,10 @@ ItemUseNotYoursToUseText:
 
 ItemUseNoEffectText:
 	text_far _ItemUseNoEffectText
+	text_end
+
+RepelAlreadyActiveText:
+	text_far _RepelAlreadyActiveText
 	text_end
 
 ThrowBallAtTrainerMonText1:

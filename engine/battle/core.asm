@@ -4682,16 +4682,17 @@ CriticalHitTest:
 	dec hl
 	ld c, [hl]                   ; read move id
 	ld a, [de]
-	bit GETTING_PUMPED, a        ; test for focus energy
-	jr nz, .focusEnergyUsed      ; bug: using focus energy causes a shift to the right instead of left,
-	                             ; resulting in 1/4 the usual crit chance
-	sla b                        ; (effective (base speed/2)*2)
-	jr nc, .noFocusEnergyUsed
-	ld b, $ff                    ; cap at 255/256
-	jr .noFocusEnergyUsed
-.focusEnergyUsed
-	srl b
-.noFocusEnergyUsed
+	bit GETTING_PUMPED, a        ; test for focus energy / dire hit
+	jr z, .noFocusEnergy
+	; Focus Energy active: ×2 here → quadruples the final crit rate
+	; (base_speed/2 * 2 = base_speed at this point, then ×4 or ÷2 below)
+	sla b
+	jr nc, .afterFocusCheck
+	ld b, $ff                    ; cap at 255
+	jr .afterFocusCheck
+.noFocusEnergy
+	srl b                        ; no Focus Energy: ÷2 (intended normal rate)
+.afterFocusCheck
 	ld hl, HighCriticalMoves     ; table of high critical hit moves
 .Loop
 	ld a, [hli]                  ; read move from move table
@@ -4710,12 +4711,16 @@ CriticalHitTest:
 	jr nc, .SkipHighCritical
 	ld b, $ff
 .SkipHighCritical
+	ld a, b
+	inc a                        ; optimization: 1 byte vs `cp $FF` (2 bytes); Z iff b == $FF
+	jr z, .criticalHit           ; crit rate 255 → always crit (fixes 1/256 crit miss bug)
 	call BattleRandom            ; generates a random value, in "a"
 	rlc a
 	rlc a
 	rlc a
 	cp b                         ; check a against calculated crit rate
 	ret nc                       ; no critical hit if no borrow
+.criticalHit
 	ld a, $1
 	ld [wCriticalHitOrOHKO], a   ; set critical hit flag
 	ret
@@ -5509,11 +5514,48 @@ MoveHitTest:
 	ld a, [wEnemyMoveAccuracy]
 	ld b, a
 .doAccuracyCheck
-; if the random number generated is greater than or equal to the scaled accuracy, the move misses
-; note that this means that even the highest accuracy is still just a 255/256 chance, not 100%
+; --- Accuracy check with optimal rounding ---
+;
+; Background:
+;   Move accuracy is stored as a byte N = floor(P * 255 / 100), where P is the
+;   intended hit percentage (e.g. P=95 → N=242). After CalcHitChance applies
+;   accuracy/evasion modifiers, the result is clamped to [1, 255].
+;
+;   The ideal hit probability is N/255, but BattleRandom produces values 0–255
+;   (256 outcomes), so we must round to either:
+;     N/256     (hit when random <  N) — undershoots by N/(256*255)
+;     (N+1)/256 (hit when random <= N) — overshoots by (255-N)/(256*255)
+;
+;   The crossover where both errors are equal is N = 127.5, so:
+;     N >= 128 (bit 7 set):  (N+1)/256 is closer to N/255 → use <=
+;     N <  128 (bit 7 clear): N/256 is closer to N/255    → use <
+;
+; Examples:
+;   P=95%, N=242: ideal=94.90%, <=gives 94.92% (err 0.02%), <gives 94.53% (err 0.37%)
+;   P=30%, N=76:  ideal=29.80%, <gives 29.69% (err 0.12%), <=gives 30.08% (err 0.28%)
+;
+; Original bug (Gen 1):
+;   Used `random < N` for all values, so N=255 gave 255/256 ≈ 99.6% instead of 100%.
+;   See: https://github.com/pret/pokered/wiki/Fix-the-1-in-255-miss-bug
+;
+; Our fix:
+;   N = 255 → always hit (bypasses RNG entirely)
+;   N >= 128, random == N → hit  (better N/255 approximation)
+;   N <  128, random == N → miss (better N/255 approximation)
+
+	; b = scaled move accuracy (set by caller)
+	ld a, b
+	inc a ; optimization: 1 byte vs `cp $FF` (2 bytes); Z iff b == $FF
+	ret z ; accuracy is 255 → always hit (fixes the 1/256 miss bug)
+
 	call BattleRandom
 	cp b
-	jr nc, .moveMissed
+	jr c, .accuracyHit   ; random < accuracy → hit (all N values)
+	jr nz, .moveMissed   ; random > accuracy → miss (all N values)
+	; random == accuracy → pick the rounding closer to N/255:
+	bit 7, b
+	jr z, .moveMissed    ; accuracy < 128 → miss (N/256 is closer to N/255)
+.accuracyHit             ; accuracy >= 128 → hit  ((N+1)/256 is closer to N/255)
 	ret
 .moveMissed
 	xor a

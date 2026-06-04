@@ -19,6 +19,14 @@ TryDoWildEncounter:
 	ld a, [wRepelRemainingSteps]
 	and a
 	jr z, .next
+; fix: don't decrement repel steps on direction change only.
+; The overworld loop sets BIT_TURNING when the player changes direction
+; without actually moving to a new tile. Without this check, turning in
+; place or changing direction before walking costs a repel step.
+	ld a, [wMiscFlags]
+	bit BIT_TURNING, a
+	jr nz, .next ; turning: skip decrement, repel still filters encounters
+	ld a, [wRepelRemainingSteps]
 	dec a
 	jr z, .lastRepelStep
 	ld [wRepelRemainingSteps], a

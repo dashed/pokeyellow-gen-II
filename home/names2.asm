@@ -15,19 +15,14 @@ GetName::
 ; [wPredefBank] = bank of list
 ;
 ; returns pointer to name in de
+	ld a, [wNameListType]
+	cp ITEM_NAME
 	ld a, [wNameListIndex]
 	ld [wNamedObjectIndex], a
-
-	; TM names are separate from item names.
-	; BUG: This applies to all names instead of just items.
-	ASSERT NUM_POKEMON_INDEXES < HM01, \
-		"A bug in GetName will get TM/HM names for Pokémon above ${x:HM01}."
-	ASSERT NUM_ATTACKS < HM01, \
-		"A bug in GetName will get TM/HM names for moves above ${x:HM01}."
-	ASSERT NUM_TRAINERS < HM01, \
-		"A bug in GetName will get TM/HM names for trainers above ${x:HM01}."
+	jr nz, .notMachine
 	cp HM01
 	jp nc, GetMachineName
+.notMachine
 
 	ldh a, [hLoadedROMBank]
 	push af
@@ -94,5 +89,4 @@ GetName::
 	pop bc
 	pop hl
 	pop af
-	call BankswitchCommon
-	ret
+	jp BankswitchCommon

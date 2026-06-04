@@ -62,6 +62,13 @@ LoadMainData:
 	ld de, wMainDataStart
 	ld bc, wMainDataEnd - wMainDataStart
 	call CopyData
+; fix: zero wPlayerMovingDirection after loading main data (Save Surf exploit).
+; The main data block persists wPlayerMovingDirection from the save. If the
+; player saved while holding a D-Pad direction, UpdatePlayerSprite in EnterMap
+; reads this stale value and sets wSpritePlayerStateData1FacingDirection to
+; match — making GetTileAndCoordsInFrontOfPlayer check the wrong tile for Surf.
+	xor a
+	ld [wPlayerMovingDirection], a
 	ld hl, wCurMapTileset
 	set BIT_NO_PREVIOUS_MAP, [hl]
 	ld hl, sSpriteData
@@ -70,6 +77,9 @@ LoadMainData:
 	call CopyData
 	ld a, [sTileAnimations]
 	ldh [hTileAnimations], a
+; fix: load repel steps remaining (Repel saving oversight).
+	ld a, [sRepelRemainingSteps]
+	ld [wRepelRemainingSteps], a
 
 ; this part is redundant, LoadCurrentBoxData is always called next
 	ld hl, sCurBoxData
@@ -214,6 +224,10 @@ SaveMainData:
 	ld de, sSpriteData
 	ld bc, wSpriteDataEnd - wSpriteDataStart
 	call CopyData
+	ld hl, wPartyDataStart
+	ld de, sPartyData
+	ld bc, wPartyDataEnd - wPartyDataStart
+	call CopyData
 
 ; this part is redundant, SaveCurrentBoxData is always called next
 	ld hl, wBoxDataStart
@@ -223,6 +237,10 @@ SaveMainData:
 
 	ldh a, [hTileAnimations]
 	ld [sTileAnimations], a
+; fix: save repel steps remaining (Repel saving oversight).
+; Without this, the repel effect is lost when the game is saved and reloaded.
+	ld a, [wRepelRemainingSteps]
+	ld [sRepelRemainingSteps], a
 	ld hl, sGameData
 	ld bc, sGameDataEnd - sGameData
 	call CalcCheckSum

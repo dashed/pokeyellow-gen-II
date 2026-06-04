@@ -19,6 +19,11 @@ Route18Gate1FDefaultScript:
 	ld hl, .StopsPlayerCoords
 	call ArePlayerCoordsInArray
 	ret nc
+; fix: block d-pad immediately to prevent Cycling Road bypass.
+; Without this, holding LEFT overrides the guard's forced RIGHT movement,
+; letting the player enter Cycling Road without a Bicycle.
+	ld a, PAD_CTRL_PAD
+	ld [wJoyIgnore], a
 	ld a, TEXT_ROUTE18GATE1F_GUARD_EXCUSE_ME
 	ldh [hTextID], a
 	call DisplayTextID

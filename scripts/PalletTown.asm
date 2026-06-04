@@ -195,6 +195,20 @@ PalletTownPlayerFollowsOakScript:
 	and a ; is the movement script over?
 	ret nz
 
+; If the auto-movement script completed but the player didn't reach the
+; warp tile into Oak's Lab, they can end up stuck in the wall. Nudge them
+; one tile left so they land on the warp tile and enter the lab normally.
+	CheckEvent EVENT_FOLLOWED_OAK_INTO_LAB
+	jr nz, .followedOak
+	ld a, $1
+	ld [wSimulatedJoypadStatesIndex], a
+	ld a, PAD_LEFT
+	ld [wSimulatedJoypadStatesEnd], a
+	xor a
+	ld [wSpritePlayerStateData1ImageIndex], a
+	jp StartSimulatingJoypadStates
+
+.followedOak
 	; trigger the next script
 	ld a, SCRIPT_PALLETTOWN_DAISY
 	ld [wPalletTownCurScript], a

@@ -45,6 +45,22 @@ EndOfBattle:
 	xor a
 	ld [wForceEvolution], a
 	predef EvolutionAfterBattle
+; Silent Indigo Plateau fix: EvolveMon calls StopAllMusic, killing the
+; victory music.  When BIT_NO_MAP_MUSIC is set (Champion battle), the
+; overworld won't auto-restore it, leaving silence until the next script
+; plays music.  Replay victory music if evolution occurred.
+	ld hl, wStatusFlags7
+	bit BIT_NO_MAP_MUSIC, [hl]
+	jr z, .skipVictoryReplay
+	ld a, [wEvolutionOccurred]
+	and a
+	jr z, .skipVictoryReplay
+	call StopAllMusic
+	ld c, BANK(Music_DefeatedTrainer)
+	ld a, MUSIC_DEFEATED_GYM_LEADER
+	call PlayMusic
+	call Delay3
+.skipVictoryReplay
 	ld d, $82
 	callfar UpdatePikachuMoodAfterBattle
 .resetVariables

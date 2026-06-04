@@ -522,9 +522,14 @@ ItemUseBall:
 	pop af
 	ld [hl], a
 	ld a, [wEnemyMonSpecies]
-	ld [wCapturedMonSpecies], a
 	ld [wCurPartySpecies], a
 	ld [wPokedexNum], a
+; fix: species #000 has index 0, indistinguishable from "no capture" flag
+; in the battle loop (wCapturedMonSpecies == 0 means no capture).
+; or 1 guarantees the capture flag is non-zero for any species index.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Index_%23000_post-capture
+	or 1
+	ld [wCapturedMonSpecies], a
 	ld a, [wBattleType]
 	cp BATTLE_TYPE_OLD_MAN ; is this the old man battle?
 	jp z, .oldManCaughtMon ; if so, don't give the player the caught Pokémon

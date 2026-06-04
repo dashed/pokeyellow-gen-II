@@ -34,11 +34,9 @@ SleepEffect:
 
 .sleepEffect
 	ld a, [bc]
-	bit NEEDS_TO_RECHARGE, a ; does the target need to recharge? (hyper beam)
-	res NEEDS_TO_RECHARGE, a ; target no longer needs to recharge
+	; fix: don't skip accuracy/status checks when target is recharging (Hyper Beam + Sleep move glitch)
+	res NEEDS_TO_RECHARGE, a ; clear recharge, but fall through to normal checks
 	ld [bc], a
-	jr nz, .setSleepCounter ; if the target had to recharge, all hit tests will be skipped
-	                        ; including the event where the target already has another status
 	ld a, [de]
 	ld b, a
 	and SLP_MASK
@@ -329,7 +327,7 @@ FreezeBurnParalyzeEffect:
 	ld hl, BurnedText
 	jp PrintText
 .freeze2
-; hyper beam bits aren't reset for opponent's side
+	call ClearHyperBeam ; fix: clear recharge bit to prevent Haze freeze softlock
 	ld a, 1 << FRZ
 	ld [wBattleMonStatus], a
 	ld a, SHAKE_SCREEN_ANIM
@@ -363,6 +361,9 @@ CheckDefrost:
 	call AddNTimes
 	xor a
 	ld [hl], a ; clear status in roster
+	; fix: prevent defrosted Pokémon from attacking this turn (defrost move forcing bug)
+	dec a ; a = 0 → $FF = CANNOT_MOVE
+	ld [wEnemySelectedMove], a
 	ld hl, FireDefrostedText
 	jr .common
 .opponent
@@ -376,6 +377,9 @@ CheckDefrost:
 	call AddNTimes
 	xor a
 	ld [hl], a
+	; fix: prevent defrosted Pokémon from attacking this turn (defrost move forcing bug)
+	dec a ; a = 0 → $FF = CANNOT_MOVE
+	ld [wPlayerSelectedMove], a
 	ld hl, FireDefrostedText
 .common
 	jp PrintText
@@ -525,21 +529,31 @@ UpdateStatDone:
 	pop bc
 	ld a, $1
 	ld [bc], a
+; Link battle animation oversight fix: when animations are disabled,
+; PlayCurrentMoveAnimation skips the Minimize animation, leaving the
+; full-size sprite despite the MINIMIZED flag being set.  Apply the
+; visual effect now so the sprite matches the flag.  (Gen II fix.)
+	ld a, [wOptions]
+	bit BIT_BATTLE_ANIMATION, a
+	jr z, .minimizeAnimPlayed ; animations ON → visual already applied
+	ld hl, AnimationMinimizeMon
+	ld b, BANK(AnimationMinimizeMon)
+	call Bankswitch
+.minimizeAnimPlayed
 	ld hl, ReshowSubstituteAnim
 	ld b, BANK(ReshowSubstituteAnim)
 	pop af
 	call nz, Bankswitch
+; fix: removed three erroneous calls that caused stat modification errors:
+; 1) ApplyBadgeStatBoosts re-applied badge boosts to ALL stats (stacking 1.125x)
+; 2) QuarterSpeedDueToParalysis applied to the wrong mon (opponent, not self)
+; 3) HalveAttackDueToBurn applied to the wrong mon (opponent, not self)
+; The individual stat was already correctly recalculated at .recalculateStat.
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Stat_modification_errors
 .applyBadgeBoostsAndStatusPenalties
-	ldh a, [hWhoseTurn]
-	and a
-	call z, ApplyBadgeStatBoosts ; whenever the player uses a stat-up move, badge boosts get reapplied again to every stat,
-	                             ; even to those not affected by the stat-up move (will be boosted further)
 	ld hl, MonsStatsRoseText
 	call PrintText
-
-; these shouldn't be here
-	call QuarterSpeedDueToParalysis ; apply speed penalty to the player whose turn is not, if it's paralyzed
-	jp HalveAttackDueToBurn ; apply attack penalty to the player whose turn is not, if it's burned
+	ret
 
 RestoreOriginalStatModifier:
 	pop hl
@@ -719,19 +733,15 @@ UpdateLoweredStatDone:
 	cp ATTACK_DOWN_SIDE_EFFECT ; for all side effects, move animation has already played, skip it
 	jr nc, .ApplyBadgeBoostsAndStatusPenalties
 	call PlayCurrentMoveAnimation2
+; fix: removed three erroneous calls (same as StatModifierUpEffect above):
+; 1) ApplyBadgeStatBoosts re-applied badge boosts to ALL stats (stacking)
+; 2) QuarterSpeedDueToParalysis applied to the wrong mon
+; 3) HalveAttackDueToBurn applied to the wrong mon
+; https://bulbapedia.bulbagarden.net/wiki/List_of_battle_glitches_in_Generation_I#Stat_modification_errors
 .ApplyBadgeBoostsAndStatusPenalties
-	ldh a, [hWhoseTurn]
-	and a
-	call nz, ApplyBadgeStatBoosts ; whenever the opponent uses a stat-down move, badge boosts get reapplied again to every stat,
-	                              ; even to those not affected by the stat-down move (will be boosted further)
 	ld hl, MonsStatsFellText
 	call PrintText
-
-; These where probably added given that a stat-down move affecting speed or attack will override
-; the stat penalties from paralysis and burn respectively.
-; But they are always called regardless of the stat affected by the stat-down move.
-	call QuarterSpeedDueToParalysis
-	jp HalveAttackDueToBurn
+	ret
 
 CantLowerAnymore_Pop:
 	pop de
@@ -1144,8 +1154,9 @@ TrappingEffect:
 .trappingEffect
 	bit USING_TRAPPING_MOVE, [hl]
 	ret nz
-	call ClearHyperBeam ; since this effect is called before testing whether the move will hit,
-                        ; the target won't need to recharge even if the trapping move missed
+; fix: removed premature ClearHyperBeam call (Hyper Beam auto-selection glitch).
+; Recharge is now cleared in .HeldInPlaceCheck / .checkIfTrapped only when
+; the trapping move actually hit (i.e., the target is genuinely trapped).
 	set USING_TRAPPING_MOVE, [hl] ; mon is now using a trapping move
 	call BattleRandom ; 3/8 chance for 2 and 3 attacks, and 1/8 chance for 4 and 5 attacks
 	and $3
